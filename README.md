@@ -239,7 +239,7 @@ DNA sequence saved to mouse_gdf5.fasta.txt
 Total sequence length: 4345bp
 Coordinates saved to mouse_gdf5.annotation.txt
 ```
-Two additional arguments can be used to adjust the start (**-sa**) and end (**-sa**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene PLUS an additional 50,000bp from the 5' flank and an additional 30,000bp from the 3' flank (direction relative to the assembly forward strand):
+Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene PLUS an additional 50,000bp from the 5' flank and an additional 30,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
 $ python vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 30000 
 Assembly name: GRCm39
