@@ -90,7 +90,7 @@ Total sequence length 100001
 ## vistacoords.py specific arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
-$ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
+$ python vistacoords.py -s human -r 1:950000-1000000 -autoname
 ```
 ```
 ...
@@ -105,7 +105,7 @@ $ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
 ```
 However, by including the **-all** flag, all transcripts are included:
 ```
-$ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname -all
+$ python vistacoords.py -s human -r 1:950000-1000000 -autoname -all
 ```
 ```
 ...
@@ -187,14 +187,14 @@ By default, the specified genomic region is read on the forward strand, but for 
 $ python vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 ```
 ```
-< 2 8055 Cenpa-205
-2 794 UTR
-1389 1404 UTR
-1405 1539 exon
-1773 1850 exon
-2262 2368 exon
-7719 7803 exon
-7804 8055 UTR
+< 1 8054 Cenpa-205
+1 793 UTR
+1388 1403 UTR
+1404 1538 exon
+1772 1849 exon
+2261 2367 exon
+7718 7802 exon
+7803 8054 UTR
 ```
 Note that the strand direction indicator has changed (> to <), and the 252bp 5' UTR is now at the bottom (3' end) of the file rather than the top, with the rest of the annotations following suit.
 
@@ -239,19 +239,19 @@ DNA sequence saved to mouse_gdf5.fasta.txt
 Total sequence length: 4345bp
 Coordinates saved to mouse_gdf5.annotation.txt
 ```
-Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene PLUS an additional 50,000bp from the 5' flank and an additional 30,000bp from the 3' flank (direction relative to the assembly forward strand):
+Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene plus an additional 50,000bp from the 5' flank and an additional 20,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
-$ python vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 30000 
+$ python vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 20000 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
 mouse gdf5 sequence length: 4345bp
-Extracting coordinates: 2:155732943-155817287
+Extracting coordinates: 2:155732943-155807287
 DNA sequence saved to mouse_gdf5.fasta.txt
-Total sequence length: 84345bp
+Total sequence length: 74345bp
 Coordinates saved to mouse_gdf5.annotation.txt
 ```
-In the output, note that the gene length is 4,345bp, but the total sequence length extracted is 84,345bp as a result of the 80,000bp flanking regions also being included. The annotation file also reflects these additional sequences, including the genes in the expanded region:
+In the output, note that the gene length is 4,345bp, but the total sequence length extracted is 74,345bp as a result of the 70,000bp flanking regions also being included. The annotation file also reflects these additional sequences, including the genes in the expanded region:
 ```
 < 1 39288 Uqcc1-204-cut5':44102bp
 10276 10333 exon
@@ -277,7 +277,7 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 54034 54345 UTR
 
 
-> 65536 84345 Cep250-204-cut3':23533bp
+> 65536 74345 Cep250-204-cut3':33533bp
 65536 65635 UTR
 70850 70949 UTR
 70950 71132 exon
@@ -285,15 +285,7 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 72691 72773 exon
 73088 73253 exon
 73967 74073 exon
-74291 74542 exon
-76536 76632 exon
-77733 77840 exon
-78264 78422 exon
-78973 79214 exon
-79691 79873 exon
-80926 81070 exon
-82321 82467 exon
-83231 83461 exon
+74291 74345 exon
 ```
 
 ## Bugs
