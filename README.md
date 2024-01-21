@@ -156,7 +156,7 @@ $ python vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 6652 6667 UTR
 7262 8054 UTR
 ```
-If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bp inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation have been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
+If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bases inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation have been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
 $ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
@@ -182,7 +182,7 @@ $ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 6152 6167 UTR
 6762 7554 UTR
 ```
-By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse stand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
+By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
 ```
 $ python vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 ```
