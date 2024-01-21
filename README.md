@@ -11,10 +11,28 @@ Jake Leyhr (@jakeleyhr)
 * requests
 * argparse
 
+## Quick start guide
+* Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
+* Create an environment with python 3.11 e.g:
+```
+conda create -n vistaenv python=3.11
+```
+* Activate (enter) the environment:
+```
+conda activate vistaenv
+```
+* install the package dependencies:
+```
+pip install requests argparse
+```
+* Download the vistacoords.py and/or vistagene.py files
+* In the Miniconda terminal, navigate to the folder containing the .py files
+* Then you're ready to start!
+
 # vistacoords.py usage
 
 ```
-$ vistacoords.py -h
+$ python vistacoords.py -h
 usage: vistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev]
                       [-autoname]
 
@@ -39,7 +57,7 @@ options:
 ## vistacoords.py inputs and outputs:
 The simplest inputs are the species name (**-s**) and region coordinates (**-r**), along with the -autoname flag:
 ```
-$ vistacoords.py -s human -r 1:100000-200000 -autoname
+$ python vistacoords.py -s human -r 1:100000-200000 -autoname
 ```
 This produces the following output in the terminal:
 ```
@@ -62,7 +80,7 @@ Total sequence length 100001
 ```
 Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files. If, for example, only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
 ```
-$ vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -autoname             
+$ python vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -autoname             
 Extracting human coordinates: 1:100000-200000
 Assembly name: GRCh38
 Coordinates saved to annotationoutput.txt
@@ -72,7 +90,7 @@ Total sequence length 100001
 ## vistacoords.py specific arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
-python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
+$ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
 ```
 ```
 ...
@@ -87,7 +105,7 @@ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
 ```
 However, by including the **-all** flag, all transcripts are included:
 ```
-python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname -all
+$ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname -all
 ```
 ```
 ...
@@ -126,7 +144,7 @@ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname -all
 ```
 Also by default, the script carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
 ```
-vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
+$ python vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 ```
 ```
 > 1 8054 Cenpa-205
@@ -140,7 +158,7 @@ vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 ```
 If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bp inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation have been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
-$ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
+$ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
 ```
 > 1 7454 Cenpa-205-cut5':500bp-cut3':100bp
@@ -152,7 +170,7 @@ $ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
 This option can be turned off by including the **-nocut** flag, such that cut off parts of the gene are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
-$ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
+$ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 ```
 ```
 > -499 7554 Cenpa-205
@@ -166,7 +184,7 @@ $ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 ```
 By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse stand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
 ```
-vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
+$ python vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 ```
 ```
 < 2 8055 Cenpa-205
@@ -183,7 +201,7 @@ Note that the strand direction indicator has changed (> to <), and the 252bp 5' 
 
 # vistagene.py usage
 ```
-$ vistagene.py -h
+$ python vistagene.py -h
 usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
 
 Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.
@@ -211,7 +229,7 @@ options:
 ## vistagene.py inputs:
 The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to vistacoords.py described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and gene name are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
 ```
-$ vistagene.py -s mouse -gene gdf5 -autoname 
+$ python vistagene.py -s mouse -gene gdf5 -autoname 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
@@ -223,7 +241,7 @@ Coordinates saved to mouse_gdf5.annotation.txt
 ```
 Two additional arguments can be used to adjust the start (**-sa**) and end (**-sa**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene PLUS an additional 50,000bp from the 5' flank and an additional 30,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
-$ vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 30000 
+$ python vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 30000 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
