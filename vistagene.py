@@ -231,8 +231,8 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                         print("Some transcripts out of range.")
                                         continue
                                 
-                                # If run with -nocut option:
-                                if nocut:
+                                # if run without -nocut option:
+                                if nocut == False:
                                     if start_position < 0: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
                                         if apply_reverse_complement:
                                             transcript_name += f"-cut3':{1-start_position}bp"
@@ -260,14 +260,14 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                         end = exon.get('end') - input_region_start + new_start # Calculate exon end coordinate relative to region
                                         #print(f'exon end: {end}')
 
-                                        # If run with -nocut option:
-                                        if nocut:
-                                            if start < 1 and end < 1: # If whole exon is 5' out of region, ignore it
+                                        # if run without -nocut option:
+                                        if nocut == False:
+                                            if start < 0 and end < 0: # If whole exon is 5' out of region, ignore it
                                                 continue
                                             if start > sequence_length and end > sequence_length: # If whole exon is 3' out of region, ignore it
                                                 continue
-                                            if start < 1: # If only the start of the exon is 5' out of region, set the start coordinate to 1
-                                                start = 1
+                                            if start < 0: # If only the start of the exon is 5' out of region, set the start coordinate to 0
+                                                start = 0
                                             if end > sequence_length: # If only the end of the exon is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                 end = sequence_length
 
@@ -284,8 +284,8 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                                 utr_end = utr.get('end') - input_region_start + new_start # Calculate UTR end coordinate relative to region
                                                 #print(f'utr end: {utr_end}')
                                                 
-                                                # If run with -nocut option:
-                                                if nocut:
+                                                # if run without -nocut option:
+                                                if nocut == False:
                                                     if utr_start < sequence_length and utr_end > sequence_length: # If UTR end is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                         utr_end = sequence_length
                                                     
@@ -299,8 +299,8 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                                     end = utr_start - 1
                                                     #print(f'end_final {end}')
                                                 
-                                                # If run with -nocut option:
-                                                if nocut:
+                                                # if run without -nocut option:
+                                                if nocut == False:
                                                     if start > sequence_length and end > sequence_length: # If whole exon is 3' out of region, set exon coordinates to 0 0 (to be removed later)
                                                         start = 0
                                                         end = 0
@@ -310,8 +310,8 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                                         continue
                                                     if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it (DELETE?)
                                                         continue
-                                                    if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 1 (DELETE?)
-                                                        utr_start = 1
+                                                    if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 0 (DELETE?)
+                                                        utr_start = 0
 
                                         coordinates.append((f"{start} {end} exon", start)) # Append the exon lines to coordinates object
                                     
@@ -328,14 +328,14 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                             #print(f'utr_end_abs {utr_end_abs}')
                                             #print(f'utr_end {utr_end}')
 
-                                            # If run with -nocut option:
-                                            if nocut:
-                                                if utr_start < 1 and utr_end < 1: # If whole UTR is 5' out of region, ignore it
+                                            # if run without -nocut option:
+                                            if nocut == False:
+                                                if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it
                                                     continue
                                                 if utr_start > sequence_length and utr_end > sequence_length: # If whole UTR is 3' out of region, ignore it
                                                     continue
-                                                if utr_start < 1 and utr_end > 1: # If UTR start is 5' out of region, set the start coordinate to 1
-                                                    utr_start = 1
+                                                if utr_start < 0 and utr_end > 0: # If UTR start is 5' out of region, set the start coordinate to 0
+                                                    utr_start = 0
                                                 if utr_start < sequence_length and utr_end > sequence_length: # If UTR end is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                     utr_end = sequence_length
 
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-all", "--all_transcripts", action="store_true", help="Include all transcripts (instead of canonical transcript only)")
-    parser.add_argument("-nocut", action="store_false", default=True, help="Delete annotations not included in sequence")
+    parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", help="Automatically generate output file names based on species and gene name")
     args = parser.parse_args()
