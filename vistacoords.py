@@ -294,9 +294,9 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
                                                     if end > sequence_length: # If only the end of the UTR is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                         end = sequence_length
                                                         continue
-                                                    if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it (DELETE?)
+                                                    if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it
                                                         continue
-                                                    if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 1 (DELETE?)
+                                                    if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 1
                                                         utr_start = 0
 
                                         coordinates.append((f"{start} {end} exon", start)) # Append the exon lines to coordinates object
