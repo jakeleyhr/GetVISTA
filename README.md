@@ -11,7 +11,7 @@ Jake Leyhr (@jakeleyhr)
 * requests
 * argparse
 
-## vistacoords.py usage
+# vistacoords.py usage
 
 ```
 $ vistacoords.py -h
@@ -36,7 +36,7 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
-### vistacoords.py inputs and outputs:
+## vistacoords.py inputs and outputs:
 The simplest inputs are the species name (**-s**) and region coordinates (**-r**), along with the -autoname flag:
 ```
 $ vistacoords.py -s human -r 1:100000-200000 -autoname
@@ -69,7 +69,7 @@ Coordinates saved to annotationoutput.txt
 DNA sequence saved to human_1:100000-200000.fasta.txt
 Total sequence length 100001
 ```
-### vistacoords.py specific arguments:
+## vistacoords.py specific arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
 python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname
@@ -181,8 +181,7 @@ vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 Note that the strand direction indicator has changed (> to <), and the 252bp 5' UTR is now at the bottom (3' end) of the file rather than the top, with the rest of the annotations following suit.
 
 
-## vistagene.py usage
-
+# vistagene.py usage
 ```
 $ vistagene.py -h
 usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
@@ -209,8 +208,75 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
+## vistagene.py inputs:
+The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to vistacoords.py described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and gene name are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
+```
+$ vistagene.py -s mouse -gene gdf5 -autoname 
+Assembly name: GRCm39
+mouse gdf5 coordinates: 2:155782943-155787287
+mouse gdf5 is on -1 strand
+mouse gdf5 sequence length: 4345bp
+Extracting coordinates: 2:155782943-155787287
+DNA sequence saved to mouse_gdf5.fasta.txt
+Total sequence length: 4345bp
+Coordinates saved to mouse_gdf5.annotation.txt
+```
+Two additional arguments can be used to adjust the start (**-sa**) and end (**-sa**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene PLUS an additional 50,000bp from the 5' flank and an additional 30,000bp from the 3' flank (direction relative to the assembly forward strand):
+```
+$ vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 30000 
+Assembly name: GRCm39
+mouse gdf5 coordinates: 2:155782943-155787287
+mouse gdf5 is on -1 strand
+mouse gdf5 sequence length: 4345bp
+Extracting coordinates: 2:155732943-155817287
+DNA sequence saved to mouse_gdf5.fasta.txt
+Total sequence length: 84345bp
+Coordinates saved to mouse_gdf5.annotation.txt
+```
+In the output, note that the gene length is 4,345bp, but the total sequence length extracted is 84,345bp as a result of the 80,000bp flanking regions also being included. The annotation file also reflects these additional sequences, including the genes in the expanded region:
+```
+< 1 39288 Uqcc1-204-cut5':44102bp
+10276 10333 exon
+18331 18403 exon
+19335 19442 exon
+20719 20814 exon
+30613 30705 exon
+38991 39014 exon
+39015 39288 UTR
 
 
+> 49706 51728 Gm15557-201
+49706 49816 UTR
+50460 50770 UTR
+50771 51475 exon
+51476 51728 UTR
+
+
+< 50001 54345 Gdf5-201
+50001 50520 UTR
+50521 51395 exon
+53421 54033 exon
+54034 54345 UTR
+
+
+> 65536 84345 Cep250-204-cut3':23533bp
+65536 65635 UTR
+70850 70949 UTR
+70950 71132 exon
+71878 71934 exon
+72691 72773 exon
+73088 73253 exon
+73967 74073 exon
+74291 74542 exon
+76536 76632 exon
+77733 77840 exon
+78264 78422 exon
+78973 79214 exon
+79691 79873 exon
+80926 81070 exon
+82321 82467 exon
+83231 83461 exon
+```
 
 ## Bugs
 
