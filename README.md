@@ -15,11 +15,11 @@ Jake Leyhr (@jakeleyhr)
 * Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
 * Create an environment with python 3.11 e.g:
 ```
-conda create -n vistaenv python=3.11
+conda create -n getvistaenv python=3.11
 ```
 * Activate (enter) the environment:
 ```
-conda activate vistaenv
+conda activate getvistaenv
 ```
 * install the package dependencies:
 ```
@@ -71,7 +71,7 @@ Along with two text files - the first contains the coordinates of the exons and 
 
 Alternatively, the output file names can be specified manually using the **-anno** and **-fasta** arguments, e.g:
 ```
-$ vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -fasta fastaoutput.txt
+$ python vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -fasta fastaoutput.txt
 Extracting human coordinates: 1:100000-200000
 Assembly name: GRCh38
 Coordinates saved to annotationoutput.txt
