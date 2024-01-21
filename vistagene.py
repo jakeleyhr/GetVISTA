@@ -208,7 +208,7 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                         new_start = 1
 
                         for transcript in transcripts:
-                            print("Transcript:", transcript)  # Add this line for debugging
+                            #print("Transcript:", transcript)  # Add this line for debugging
 
                             # Choose to return annotations for all transcripts or just the canonical ones
                             if args.all_transcripts:
@@ -219,9 +219,9 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                             if filter_type == 'all' or ('is_canonical' in transcript and transcript['is_canonical'] == 1):
                                 strand_indicator = ">" if gene_info['strand'] == 1 else "<" # Determines strand direction
                                 start_position = transcript.get('start') - input_region_start + new_start # Calculate transcript start coordinate relative to region
-                                print(f'transcript start: {start_position}')
+                                #print(f'transcript start: {start_position}')
                                 end_position = transcript.get('end') - input_region_start + new_start # Calculate transcript end coordinate relative to region
-                                print(f'transcript end: {end_position}')
+                                #print(f'transcript end: {end_position}')
                                 transcript_name = transcript.get('display_name', transcript['id']) # Get transcript name
                                 
                                 if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
@@ -230,6 +230,7 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                 if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
                                         print("Some transcripts out of range.")
                                         continue
+                                
                                 # If run with -nocut option:
                                 if nocut:
                                     if start_position < 0: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
@@ -255,9 +256,9 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                     exons = transcript['Exon']
                                     for exon in exons:
                                         start = exon.get('start') - input_region_start + new_start # Calculate exon start coordinate relative to region
-                                        print(f'exon start: {start}')
+                                        #print(f'exon start: {start}')
                                         end = exon.get('end') - input_region_start + new_start # Calculate exon end coordinate relative to region
-                                        print(f'exon end: {end}')
+                                        #print(f'exon end: {end}')
 
                                         # If run with -nocut option:
                                         if nocut:
