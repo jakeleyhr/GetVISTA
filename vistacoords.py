@@ -163,7 +163,7 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
                 input_region_end = int(region.split(":")[1].split("-")[1])  # Extracting end position from the input region
                 sequence_length = (input_region_end - input_region_start) + 1 # Calculating total sequence length
                 print(f"Extracting {species} coordinates: {region}")
-
+                print(f"Total sequence length:{sequence_length}")
                 printed_assembly_name = False  # Flag to track if assembly name has been printed
                 
                 for gene in genes_in_region:
