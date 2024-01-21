@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+"""
+File: vistacoords.py
+Author: Jake Leyhr
+GitHub: https://github.com/jakeleyhr/GetVISTA/
+Date: January 2024
+Description: Query the Ensembl database with species and genomic coordinates to obtain FASTA file and gene feature coordinates in VISTA format
+"""
+
+ # Import dependencies
 import sys
 import json
 import time
@@ -176,7 +185,6 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
                     #print("Gene Info:", gene_info)  # Add this line for debugging
                     if gene_info and 'Transcript' in gene_info:
                         transcripts = gene_info['Transcript']
-                        gene_start = gene_info['start']
                         new_start = 1
 
                         # Print assembly name only once
@@ -201,14 +209,16 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
                                 #print(f'transcript end: {end_position}')
                                 transcript_name = transcript.get('display_name', transcript['id']) # Get transcript name
 
-                                if start_position <= 0 and end_position <= 0: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
-                                    print("Some transcripts out of range.")
-                                if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
-                                    print("Some transcripts out of range.")
+                                # Check if any of the transcripts are entirely out of range
+                                if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it.
+                                    print(f"{transcript_name} transcript out of 5' range:{start_position}:{end_position}")
+                                    continue
+                                if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it.
+                                    print(f"{transcript_name} transcript out of 3' range:{start_position}:{end_position}")
+                                    continue
 
                                 # if run without -nocut option:
                                 if nocut == False:
-
                                     if start_position < 1: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
                                         if apply_reverse_complement:
                                             transcript_name += f"-cut3':{1-start_position}bp"
@@ -238,12 +248,12 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
 
                                         # if run without -nocut option:
                                         if nocut == False:
-                                            if start < 1 and end < 1: # If whole exon is 5' out of region, ignore it
+                                            if start < 0 and end < 0: # If whole exon is 5' out of region, ignore it
                                                 continue
                                             if start > sequence_length and end > sequence_length: # If whole exon is 3' out of region, ignore it
                                                 continue
-                                            if start < 1: # If only the start of the exon is 5' out of region, set the start coordinate to 1
-                                                start = 1
+                                            if start < 0: # If only the start of the exon is 5' out of region, set the start coordinate to 1
+                                                start = 0
                                             if end > sequence_length: # If only the end of the exon is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                 end = sequence_length
 
@@ -287,7 +297,7 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
                                                     if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it (DELETE?)
                                                         continue
                                                     if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 1 (DELETE?)
-                                                        utr_start = 1
+                                                        utr_start = 0
 
                                         coordinates.append((f"{start} {end} exon", start)) # Append the exon lines to coordinates object
                                     
@@ -306,12 +316,12 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
 
                                             # if run without -nocut option:
                                             if nocut == False:
-                                                if utr_start < 1 and utr_end < 1: # If whole UTR is 5' out of region, ignore it
+                                                if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it
                                                     continue
                                                 if utr_start > sequence_length and utr_end > sequence_length: # If whole UTR is 3' out of region, ignore it
                                                     continue
-                                                if utr_start < 1 and utr_end > 1: # If UTR start is 5' out of region, set the start coordinate to 1
-                                                    utr_start = 1
+                                                if utr_start < 0 and utr_end > 0: # If UTR start is 5' out of region, set the start coordinate to 1
+                                                    utr_start = 0
                                                 if utr_start < sequence_length and utr_end > sequence_length: # If UTR end is 3' out of region, set the end coordinate to sequence_length (maximum of range)
                                                     utr_end = sequence_length
 

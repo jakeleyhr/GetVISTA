@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+"""
+File: vistagene.py
+Author: Jake Leyhr
+GitHub: https://github.com/jakeleyhr/GetVISTA/
+Date: January 2024
+Description: Query the Ensembl database with species and gene name to obtain FASTA file and gene feature coordinates in VISTA format
+"""
+
+ # Import dependencies
 import sys
 import json
 import time
@@ -204,7 +213,6 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                     #print("Gene Info:", gene_info)  # Add this line for debugging
                     if gene_info and 'Transcript' in gene_info:
                         transcripts = gene_info['Transcript']
-                        gene_start = gene_info['start']
                         new_start = 1
 
                         for transcript in transcripts:
@@ -224,11 +232,12 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                                 #print(f'transcript end: {end_position}')
                                 transcript_name = transcript.get('display_name', transcript['id']) # Get transcript name
                                 
-                                if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
-                                        print("Some transcripts out of range.")
+                                # Check if any of the transcripts are entirely out of range
+                                if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it.
+                                        print(f"{transcript_name} transcript out of 5' range:{start_position}:{end_position}")
                                         continue
-                                if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
-                                        print("Some transcripts out of range.")
+                                if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it.
+                                        print(f"{transcript_name} transcript out of 3' range:{start_position}:{end_position}")
                                         continue
                                 
                                 # if run without -nocut option:
