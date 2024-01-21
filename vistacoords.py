@@ -203,11 +203,11 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
 
                                 # If run with -nocut option:
                                 if nocut:
-                                    if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
+                                    if start_position < 1 and end_position < 1: # If entire transcript is out of region range, ignore it. (Shouldn't occur.)
                                         print("Some transcripts out of range.")
                                         continue
 
-                                    if start_position < 0: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
+                                    if start_position < 1: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
                                         if apply_reverse_complement:
                                             transcript_name += f"-cut3':{1-start_position}bp"
                                         else:
