@@ -183,7 +183,7 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, output_f
     return genomic_coordinates
 
 
-def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, start_value=None, nocut=None, apply_reverse_complement=False):
+def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False):
     genomic_coordinates = download_dna_sequence(species, gene_name, start_adjust, end_adjust, fasta_output_file, apply_reverse_complement)
     client = EnsemblRestClient()
     gene_info = client.get_genes_in_genomic_coordinates(species, genomic_coordinates)
@@ -205,7 +205,7 @@ def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_out
                     if gene_info and 'Transcript' in gene_info:
                         transcripts = gene_info['Transcript']
                         gene_start = gene_info['start']
-                        new_start = start_value #if start_value else 1
+                        new_start = 1
 
                         for transcript in transcripts:
                             #print("Transcript:", transcript)  # Add this line for debugging
@@ -383,7 +383,6 @@ if __name__ == '__main__':
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-all", "--all_transcripts", action="store_true", help="Include all transcripts (instead of canonical transcript only)")
-    parser.add_argument("-start_value", type=int, default=1, help="Start value for coordinates, 1 by default")
     parser.add_argument("-nocut", action="store_false", default=True, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", help="Automatically generate output file names based on species and gene name")
@@ -405,7 +404,6 @@ if __name__ == '__main__':
         args.fasta_output_file, 
         args.coordinates_output_file, 
         args.all_transcripts, 
-        args.start_value, 
         args.nocut, 
         args.rev
     )
