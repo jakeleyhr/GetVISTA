@@ -15,7 +15,7 @@ Jake Leyhr (@jakeleyhr)
 
 ```
 $ vistacoords.py -h
-usage: vistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-start_value START_VALUE] [-nocut] [-rev]
+usage: vistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev]
                       [-autoname]
 
 Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.
@@ -32,8 +32,6 @@ options:
                         Output file name for the gene coordinates
   -all, --all_transcripts
                         Include all transcripts (instead of canonical transcript only)
-  -start_value START_VALUE
-                        Start value for coordinates, 1 by default
   -nocut                Don't delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
@@ -187,8 +185,7 @@ Note that the strand direction indicator has changed (> to <), and the 252bp 5' 
 
 ```
 $ vistagene.py -h
-usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all]
-                    [-start_value START_VALUE] [-nocut] [-rev] [-autoname]
+usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
 
 Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.
 
@@ -208,8 +205,6 @@ options:
                         Output file name for the gene coordinates
   -all, --all_transcripts
                         Include all transcripts (instead of canonical transcript only)
-  -start_value START_VALUE
-                        Start value for coordinates, 1 by default
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
