@@ -128,7 +128,7 @@ python vistacoords.py -s human -r 1:950000-1000000 -anno -autoname -all
 ```
 Also by default, the script carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
 ```
-vistacoords.py -s mouse -r 5:30824121-30832175 -anno annotationoutput2.txt
+vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 ```
 ```
 > 1 8054 Cenpa-205
@@ -142,7 +142,7 @@ vistacoords.py -s mouse -r 5:30824121-30832175 -anno annotationoutput2.txt
 ```
 If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bp inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation have been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
-$ vistacoords.py -s mouse -r 5:30824621-30832074 -anno annotationoutput2.txt
+$ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
 ```
 > 1 7454 Cenpa-205-cut5':500bp-cut3':100bp
@@ -152,9 +152,9 @@ $ vistacoords.py -s mouse -r 5:30824621-30832074 -anno annotationoutput2.txt
 6152 6167 UTR
 6762 7454 UTR
 ```
-This option can be turned off by including the -nocut flag, such that cut off parts of the gene are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
+This option can be turned off by including the **-nocut** flag, such that cut off parts of the gene are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
-vistacoords.py -s mouse -r 5:30824621-30832074 -anno annotationoutput2.txt -nocut
+$ vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 ```
 ```
 > -499 7554 Cenpa-205
@@ -166,7 +166,22 @@ vistacoords.py -s mouse -r 5:30824621-30832074 -anno annotationoutput2.txt -nocu
 6152 6167 UTR
 6762 7554 UTR
 ```
-start_value, rev
+By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse stand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
+```
+vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
+```
+```
+< 2 8055 Cenpa-205
+2 794 UTR
+1389 1404 UTR
+1405 1539 exon
+1773 1850 exon
+2262 2368 exon
+7719 7803 exon
+7804 8055 UTR
+```
+Note that the strand direction indicator has changed (> to <), and the 252bp 5' UTR is now at the bottom (3' end) of the file rather than the top, with the rest of the annotations following suit.
+
 
 ## vistagene.py usage
 
