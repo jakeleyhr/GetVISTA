@@ -36,7 +36,7 @@ $ python vistacoords.py -h
 usage: vistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev]
                       [-autoname]
 
-Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.
+Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.
 
 options:
   -h, --help            show this help message and exit
@@ -45,7 +45,7 @@ options:
   -r REGION, --region REGION
                         Genomic coordinates (e.g., 1:1000-2000)
   -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
-                        Output file name for the DNA sequence in VISTA format
+                        Output file name for the DNA sequence in FASTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene coordinates
   -all, --all_transcripts
@@ -67,7 +67,7 @@ Coordinates saved to human_1:100000-200000.annotation.txt
 DNA sequence saved to human_1:100000-200000.fasta.txt
 Total sequence length 100001
 ```
-Along with two text files - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected, and the second contains the DNA sequence of the selected region in FASTA format. By using the **-autoname** flag, the names of these files were automatically generated from the species and region inputs.
+Along with two text files - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected in pipmaker format, and the second contains the DNA sequence of the selected region in FASTA format. By using the **-autoname** flag, the names of these files were automatically generated from the species and region inputs.
 
 Alternatively, the output file names can be specified manually using the **-anno** and **-fasta** arguments, e.g:
 ```
@@ -156,7 +156,7 @@ $ python vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 6652 6667 UTR
 7262 8054 UTR
 ```
-If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bases inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation have been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
+If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bases inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation has been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
 $ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
@@ -204,7 +204,7 @@ Note that the strand direction indicator has changed (> to <), and the 252bp 5' 
 $ python vistagene.py -h
 usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
 
-Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.
+Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.
 
 options:
   -h, --help            show this help message and exit
@@ -217,7 +217,7 @@ options:
   -ea END_ADJUST, --end_adjust END_ADJUST
                         Number to add to the end coordinate (default: 0)
   -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
-                        Output file name for the DNA sequence in VISTA format
+                        Output file name for the DNA sequence in FASTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene coordinates
   -all, --all_transcripts
@@ -287,6 +287,8 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 73967 74073 exon
 74291 74345 exon
 ```
+## Limitations
+Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 
 ## Bugs
 
