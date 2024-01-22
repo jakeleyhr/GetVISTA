@@ -5,7 +5,7 @@ File: vistagene.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
 Date: January 2024
-Description: Query the Ensembl database with species and gene name to obtain FASTA file and gene feature coordinates in VISTA format
+Description: Query the Ensembl database with species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
  # Import dependencies
@@ -392,8 +392,8 @@ if __name__ == '__main__':
     parser.add_argument("-gene", "--gene_name", help="Gene name")
     parser.add_argument("-sa", "--start_adjust", type=int, default=0, help="Number to subtract from the start coordinate (default: 0)")
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
-    parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
-    parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
+    parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in FASTA format")
+    parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates in pipmaker format")
     parser.add_argument("-all", "--all_transcripts", action="store_true", help="Include all transcripts (instead of canonical transcript only)")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", help="Reverse complement DNA sequence and coordinates")
