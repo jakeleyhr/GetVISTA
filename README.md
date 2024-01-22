@@ -1,5 +1,5 @@
 # GetVISTA
-Query Ensembl to obtain genomic information in VISTA format.
+Query Ensembl to obtain genomic information in VISTA format. Useful for collecting sequences to run in [mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) multi-species alignment.
 * **vistacoords.py**: query with species and _genomic coordinates_
 * **vistagene.py**: query with species and _gene name_
 
