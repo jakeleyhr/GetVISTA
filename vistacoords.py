@@ -370,10 +370,10 @@ def run(species, region, fasta_output_file=None, coordinates_output_file=None, a
 
 if __name__ == '__main__':
     # Specify arguments:
-    parser = argparse.ArgumentParser(description="Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.")
+    parser = argparse.ArgumentParser(description="Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.")
     parser.add_argument("-s", "--species", help="Species name (e.g., 'Homo_sapiens' or 'Human')")
     parser.add_argument("-r", "--region", help="Genomic coordinates (e.g., 1:1000-2000)")
-    parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
+    parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in FASTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-all", "--all_transcripts", action="store_true", help="Include all transcripts (instead of canonical transcript only)")
     parser.add_argument("-nocut", action="store_true", default=False, help="Don't delete annotations not included in sequence")
