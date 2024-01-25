@@ -104,21 +104,17 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
             print("Locus: None available")
 
         try:
-            assembly = gene_info[0]["Entrezgene_locus"][record_id][
-                "Gene-commentary_label"
-            ]
-            accession_number = gene_info[0]["Entrezgene_locus"][record_id][
-                "Gene-commentary_accession"
-            ]
+            assembly = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_label"]
+            accession_number = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_accession"]
             start = (int(
                 gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]
                 ["Seq-loc_int"]["Seq-interval"]["Seq-interval_from"]
-            ) + 1) # change 2nd 0 to 1, 2 etc for transcript variants #111
+            ) + 1)
             end = (int(
                     gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]
                     ["Seq-loc_int"]["Seq-interval"]["Seq-interval_to"]
-            ) + 1)  # "Gene-commentary_seqs" gives merged gene seqeunce, "Gene-commentary-products" gives transcripts #111
-            length = end - start
+            ) + 1)  # "Gene-commentary_seqs" gives merged gene seqeunce, "Gene-commentary-products" gives transcripts
+            length = end - start + 1
 
             print("")
             print(f"Using record {record_id}:")
@@ -163,25 +159,18 @@ def get_genes_in_region(accession, start, end):
     record = SeqIO.read(handle, "genbank")
     handle.close()
 
-    # Extract sequence from GenBank record based on coordinates
-    # sequence = record.seq[start-1:end]  # Adjust coordinates to 0-based indexing
-    # print(f"Sequence length: {len(sequence)}")
-
     # Prepare to collect genes and features
     genes_in_region, collected_features = [], []
     collect_features = False
 
     # Parse GenBank features to identify genes that overlap with specified sequence region
     for feature in record.features:
-        # print(feature)
         if feature.type == "gene":
             location_str = str(feature.location)
             match = re.search(r"\[([<>]?\d+):([<>]?\d+[<>]?)\]\([+-]\)", location_str) # Look for location coordinates in particular format. '[<>]?' allows for < or >
             if match:
-                gene_start = int(match.group(1).lstrip('<').lstrip('>'))
+                gene_start = int(match.group(1).lstrip('<').lstrip('>')) + 1 # +1 to start only because of 0-based indexing in Entrez record (not present on NCBI website)
                 gene_end = int(match.group(2).lstrip('<').lstrip('>'))
-                #print(gene_start)
-                #print(gene_end)
                 if (
                     start <= gene_start <= end # Gene start inside region?
                     or start <= gene_end <= end # Gene end inside region?
@@ -264,7 +253,7 @@ def reorder_location(location_str):
     ordered_pairs = sorted(pairs, key=lambda x: x[0])
 
     # Format the ordered pairs back into the desired string format e.g. "100:200, 300:400"
-    ordered_location_str = ",".join([f"{left}:{right}" for left, right in ordered_pairs])
+    ordered_location_str = ",".join([f"{int(left)+1}:{right}" for left, right in ordered_pairs]) # +1 to left(start) to account for 0-based numbering from Entrez record
 
     return ordered_location_str
 
@@ -591,7 +580,6 @@ def download_fasta(species, accession, start, end, fasta_output_file, apply_reve
         # Create a SeqRecord object and save it in FASTA format
         fasta_record = SeqIO.SeqRecord(sequence, id=f"{species}:{accession}_{start}:{end}:1", description="")
     else:
-        print("reverse complementing the sequence...")
         # Reverse complement the sequence
         reverse_complement_sequence = str(sequence.reverse_complement())
         # Create a SeqRecord object and save it in FASTA format
@@ -645,11 +633,7 @@ def run(
         coordinates = pipmaker(paired_list, ncrna_list, start_position)
 
         # If -nocut argument is included, continue. If not, cut the ends to remove coordinates out of range.
-        if nocut == True:
-            print("Not cutting results.")
-            # print(coordinates)
-        else:
-            print("Cutting results.")
+        if nocut is False:
             coordinates = cut(coordinates, sequence_length)
 
         # Format the coordinates into string with lines
