@@ -5,8 +5,8 @@ File: gbvistacoords.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
 Date: January 2024
-Description: Query the GenBank database with a accession and gene name 
-to obtain FASTA file and gene feature coordinates in pipmaker format
+Description: Query the GenBank database with an accession and range of coordinates \
+    to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
 # Import dependencies
@@ -19,39 +19,6 @@ from Bio.Seq import Seq
 
 http.client.HTTPConnection._http_vsn = 10
 http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
-
-# functions for debugging
-def record_directories(gene_info):
-    for key, value in gene_info[0].items():
-        print(f"Key at top level: {key}")
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                print(f"  Sub-key: {sub_key}")
-                if isinstance(sub_value, dict):
-                    for sub_sub_key, sub_sub_value in sub_value.items():
-                        print(f"    Sub-sub-key: {sub_sub_key}")
-                        print(f"    Sub-sub-value: {sub_sub_value}")
-                else:
-                    print(f"  Sub-value: {sub_value}")
-def search_key_value(data, target_key, indent=""):
-    for key, value in data.items():
-        print(key)
-        if key == target_key:
-            print(f"{indent}{key}: {value}")
-            continue
-        if isinstance(value, dict):
-            search_key_value(value, target_key, indent + "  ")
-def explore_structure(data, indent=""):
-    if isinstance(data, dict):
-        for key, value in data.items():
-            print(f"{indent}{key}:")
-            explore_structure(value, indent + "  ")
-    elif isinstance(data, list):
-        for i, item in enumerate(data):
-            print(f"{indent}[{i}]:")
-            explore_structure(item, indent + "  ")
-    else:
-        print(f"{indent}{data}")
 
 
 # Function #3 - get list of genes and features in specified region
@@ -361,8 +328,8 @@ def pipmaker(paired_list, ncrna_list, start_position):
 
                 # Make UTR feature lines
                 if "ncRNA" in transcript:
-                    ncrna = transcript["ncRNA"]
-                    for ncrna in ncrna:
+                    ncrnas = transcript["ncRNA"]
+                    for ncrna in ncrnas:
                         ncrna_start = (ncrna["start"] - start_position + 1)  # Add 1 to avoid 0 values
                         ncrna_end = (ncrna["end"] - start_position + 1)  # Add 1 to avoid 0 values
                         feature_lines.append(f"{ncrna_start} {ncrna_end} UTR")
@@ -660,7 +627,8 @@ def run(
 
 if __name__ == "__main__":
     # Create an ArgumentParser
-    parser = argparse.ArgumentParser(description="Search gene information.")
+    parser = argparse.ArgumentParser(description="Query the GenBank database with an accession and range of coordinates \
+                                     to obtain FASTA file and gene feature coordinates in pipmaker format.")
 
     # Add arguments for accession and gencoordinates
     parser.add_argument("-a", "--accession", help="accession code", required=True)

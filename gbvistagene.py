@@ -5,8 +5,8 @@ File: gbvistagene.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
 Date: January 2024
-Description: Query the GenBank database with a species and gene name 
-to obtain FASTA file and gene feature coordinates in pipmaker format
+Description: Query the GenBank database with a species and gene name \
+    to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
 # Import dependencies
@@ -65,7 +65,7 @@ def search_gene_info(species, gene_name):
     query = f"{species}[ORGN] AND {gene_name}[Gene Name] OR {gene_name}[Accession]"
 
     # Search Entrez Gene
-    handle = Entrez.esearch(db="gene", term=query, retmode="xml")
+    handle = Entrez.esearch(db="nuccore", term=query, retmode="xml")
     record = Entrez.read(handle)
     # print(f' Entrez record: {record}')
 
@@ -736,7 +736,8 @@ def run(
 
 if __name__ == "__main__":
     # Create an ArgumentParser
-    parser = argparse.ArgumentParser(description="Search gene information.")
+    parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
+                                     to obtain FASTA file and gene feature coordinates in pipmaker format.")
 
     # Add arguments for species and gene_symbol
     parser.add_argument("-s", "--species", help="Species name", required=True)
