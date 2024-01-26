@@ -10,14 +10,14 @@ to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
 # Import dependencies
-from math import e
-from Bio import Entrez, SeqIO
-from Bio.Seq import Seq
 import re
 import argparse
 import sys
 from collections import defaultdict
 import http.client
+from Bio import Entrez, SeqIO
+from Bio.Seq import Seq
+
 
 http.client.HTTPConnection._http_vsn = 10
 http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
@@ -262,7 +262,6 @@ def reorder_location(location_str):
 def reformat(collected_features):
     # Initialize empty lists
     mrna_list, cds_list, ncrna_list = [], [], []
-
     # Loop through features and extract corresponding lists
     for feature in collected_features:
         if feature["type"] == "mRNA":
@@ -272,28 +271,65 @@ def reformat(collected_features):
         elif feature["type"] == "ncRNA":
             ncrna_list.extend(extract_features(feature))
 
-    # Create a mapping of unique transcriptids to numbers
-    transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
-    transcriptid_mapping_protein = defaultdict(lambda: len(transcriptid_mapping_protein) + 1)
+    # Generate ID number for mRNA transcript based on gene and transcriptID
+    gene_mapping = {}
+    transcriptid_mapping = {}
+    current_id = 1
+    for mrna in mrna_list:
+        gene = mrna['gene']
+        transcriptid = mrna['transcriptid']
+        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
+        firstkey = (gene)
+        if firstkey not in transcriptid_mapping and key not in gene_mapping:
+            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
+            current_id = 1
+            gene_mapping[key] = current_id
+            transcriptid_mapping[firstkey] = current_id
+        elif firstkey in transcriptid_mapping and key not in gene_mapping:
+            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
+            current_id = current_id + 1
+            gene_mapping[key] = current_id
+        mrna['ID']=gene_mapping[key]
+
+    # Generate ID number for CDS transcript based on gene and transcriptID
+    gene_mapping = {}
+    transcriptid_mapping = {}
+    current_id = 1
+    for cds in cds_list:
+        gene = cds['gene']
+        transcriptid = cds['transcriptid']
+        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
+        firstkey = (gene)
+        if firstkey not in transcriptid_mapping and key not in gene_mapping:
+            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
+            current_id = 1
+            gene_mapping[key] = current_id
+            transcriptid_mapping[firstkey] = current_id
+        elif firstkey in transcriptid_mapping and key not in gene_mapping:
+            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
+            current_id = current_id + 1
+            gene_mapping[key] = current_id
+        cds['ID']=gene_mapping[key]
+
+    #Now make the gene name + ID as the "transcript key" for pairing mRNAs and corresponding CDSs
 
     # Create a dictionary to organize entries by transcript and type
     organized_dict = defaultdict(lambda: {"mRNA": [], "CDS": []})
-
     # Iterate through the mRNA list and organize entries based on transcriptid
     for mrna_entry in mrna_list:
-        transcriptid = mrna_entry["transcriptid"]
-        transcript_key = f"{mrna_entry['gene']}transcript{transcriptid_mapping_transcript[transcriptid]}"
+        transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['ID']}"
         organized_dict[transcript_key]["mRNA"].append(mrna_entry)
-
     # Iterate through the CDS list and pair entries with the same transcriptid
     for cds_entry in cds_list:
-        transcriptid = cds_entry["transcriptid"]
-        transcript_key = (f"{cds_entry['gene']}transcript{transcriptid_mapping_protein[transcriptid]}")
+        transcript_key = f"{cds_entry['gene']}transcript{cds_entry['ID']}"
         organized_dict[transcript_key]["CDS"].append(cds_entry)
-
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
 
+
+    # Create a mapping of unique ncRNA transcriptids to numbers
+    transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
+    
     # Create a dictionary to organize ncRNA entries by transcript and type
     organized_ncrnas = defaultdict(lambda: {"ncRNA": []})
 
@@ -393,8 +429,8 @@ def pipmaker(paired_list, ncrna_list, start_position):
 
                 # Make UTR feature lines
                 if "ncRNA" in transcript:
-                    ncrna = transcript["ncRNA"]
-                    for ncrna in ncrna:
+                    ncrnas = transcript["ncRNA"]
+                    for ncrna in ncrnas:
                         ncrna_start = (ncrna["start"] - start_position + 1)  # Add 1 to avoid 0 values
                         ncrna_end = (ncrna["end"] - start_position + 1)  # Add 1 to avoid 0 values
                         feature_lines.append(f"{ncrna_start} {ncrna_end} UTR")
@@ -603,6 +639,7 @@ def run(
     coordinates_output_file,
     nocut=None,
     apply_reverse_complement=False,
+    autoname=False,
 ):
     # Get target gene record from Entrez
     gene_info = search_gene_info(species, gene_symbol)
@@ -621,7 +658,7 @@ def run(
     print("")
 
     # If -anno argument is included (or -autoname), collect feature coordinates and write to .txt file:
-    if coordinates_output_file:
+    if coordinates_output_file or autoname:
         # Get 2 reformatted lists of genes and features: 1 for ncRNAs, and 1 for paired mRNA/CDS features
         ncrna_list, paired_list = reformat(collected_features)
 
@@ -647,6 +684,27 @@ def run(
             else:
                 formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]}\n"
 
+        # Automatically generate output file names if -autoname is provided
+        if autoname:
+            if not fasta_output_file:
+                if not apply_reverse_complement:
+                    fasta_output_file = f"{species}_{gene_symbol}_{start_position}-{end_position}.fasta.txt"
+                else:
+                    fasta_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}_revcomp.fasta.txt")
+            if not coordinates_output_file:
+                if not apply_reverse_complement:
+                    coordinates_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}.annotation.txt")
+                else:
+                    coordinates_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}_revcomp.annotation.txt")
+
+        # Check if ".txt" is already at the end of the coordinates_output_file argument
+        if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
+            coordinates_output_file += ".txt"
+
+        # Check if ".txt" is already at the end of the fasta_output_file argument
+        if fasta_output_file and not fasta_output_file.endswith(".txt"):
+            fasta_output_file += ".txt"
+
         # Check if need to reverse complement and write to txt file
         if not apply_reverse_complement:
             with open(coordinates_output_file, 'w') as coordinates_file:
@@ -664,9 +722,9 @@ def run(
         print("No pipmaker output file specified.")
 
     # If -fasta argument is included (or -autoname), write the DNA sequence to a txt file:
-    if fasta_output_file:
+    if fasta_output_file or autoname:
         # First download the sequence
-        download_fasta(species, accession_number, start_position, end_position, fasta_output_file, apply_reverse_complement)  
+        download_fasta(species, accession_number, start_position, end_position, fasta_output_file, apply_reverse_complement) 
         # Check if need to reverse complement
         if not apply_reverse_complement:
             print(f"DNA sequence saved to {fasta_output_file}")
@@ -690,31 +748,10 @@ if __name__ == "__main__":
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
-    parser.add_argument("-autoname", action="store_true", help="Automatically generate output file names based on species and gene name")
+    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
 
     # Parse the command-line arguments
     args = parser.parse_args()
-
-    # Automatically generate output file names if -autoname is provided
-    if args.autoname:
-        if not args.fasta_output_file:
-            if not args.rev:
-                args.fasta_output_file = f"{args.species}_{args.gene_symbol}.fasta.txt"
-            else:
-                args.fasta_output_file = (f"{args.species}_{args.gene_symbol}_revcomp.fasta.txt")
-        if not args.coordinates_output_file:
-            if not args.rev:
-                args.coordinates_output_file = (f"{args.species}_{args.gene_symbol}.annotation.txt")
-            else:
-                args.coordinates_output_file = (f"{args.species}_{args.gene_symbol}_revcomp.annotation.txt")
-
-    # Check if ".txt" is already at the end of the coordinates_output_file argument
-    if args.coordinates_output_file and not args.coordinates_output_file.endswith(".txt"):
-        args.coordinates_output_file += ".txt"
-
-    # Check if ".txt" is already at the end of the fasta_output_file argument
-    if args.fasta_output_file and not args.fasta_output_file.endswith(".txt"):
-        args.fasta_output_file += ".txt"
 
     # Provide arguments to run
     run(
@@ -727,4 +764,5 @@ if __name__ == "__main__":
         args.coordinates_output_file,
         args.nocut,
         args.rev,
+        args.autoname
     )

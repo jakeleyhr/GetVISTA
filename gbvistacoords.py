@@ -10,14 +10,12 @@ to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
 # Import dependencies
-from math import e
-from Bio import Entrez, SeqIO
-from Bio.Seq import Seq
 import re
 import argparse
-import sys
 from collections import defaultdict
 import http.client
+from Bio import Entrez, SeqIO
+from Bio.Seq import Seq
 
 http.client.HTTPConnection._http_vsn = 10
 http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
@@ -194,8 +192,6 @@ def reorder_location(location_str):
 
 # Function 4 - reformat feature information into lists groups by gene
 def reformat(collected_features):
-    print(collected_features)
-    # Initialize empty lists
     # Initialize empty lists
     mrna_list, cds_list, ncrna_list = [], [], []
     # Loop through features and extract corresponding lists
@@ -207,68 +203,63 @@ def reformat(collected_features):
         elif feature["type"] == "ncRNA":
             ncrna_list.extend(extract_features(feature))
 
-
+    # Generate ID number for mRNA transcript based on gene and transcriptID
     gene_mapping = {}
     transcriptid_mapping = {}
     current_id = 1
     for mrna in mrna_list:
         gene = mrna['gene']
         transcriptid = mrna['transcriptid']
-        key = (gene, transcriptid)  # Use both first and last names as the key
+        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
         firstkey = (gene)
-        if key not in gene_mapping and firstkey not in transcriptid_mapping:
-            # If the key hasn't appeared earlier, assign a new ID
+        if firstkey not in transcriptid_mapping and key not in gene_mapping:
+            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
             current_id = 1
             gene_mapping[key] = current_id
             transcriptid_mapping[firstkey] = current_id
-        elif key not in gene_mapping and firstkey in transcriptid_mapping:
+        elif firstkey in transcriptid_mapping and key not in gene_mapping:
+            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
             current_id = current_id + 1
             gene_mapping[key] = current_id
         mrna['ID']=gene_mapping[key]
-    print(mrna_list)
 
-
+    # Generate ID number for CDS transcript based on gene and transcriptID
     gene_mapping = {}
     transcriptid_mapping = {}
     current_id = 1
     for cds in cds_list:
         gene = cds['gene']
         transcriptid = cds['transcriptid']
-        key = (gene, transcriptid)  # Use both first and last names as the key
+        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
         firstkey = (gene)
-        if key not in gene_mapping and firstkey not in transcriptid_mapping:
-            # If the key hasn't appeared earlier, assign a new ID
+        if firstkey not in transcriptid_mapping and key not in gene_mapping:
+            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
             current_id = 1
             gene_mapping[key] = current_id
             transcriptid_mapping[firstkey] = current_id
-        elif key not in gene_mapping and firstkey in transcriptid_mapping:
+        elif firstkey in transcriptid_mapping and key not in gene_mapping:
+            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
             current_id = current_id + 1
             gene_mapping[key] = current_id
         cds['ID']=gene_mapping[key]
-    print(cds_list)
 
-    #So now have new lists with an 'ID' field. Now just need to make the gene name + transcriptid + ID as the "key" for pairing mRNAs and CDSs
+    #Now make the gene name + ID as the "transcript key" for pairing mRNAs and corresponding CDSs
 
     # Create a dictionary to organize entries by transcript and type
     organized_dict = defaultdict(lambda: {"mRNA": [], "CDS": []})
     # Iterate through the mRNA list and organize entries based on transcriptid
     for mrna_entry in mrna_list:
         transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['ID']}"
-        print(f'Transcript key: {transcript_key}')
         organized_dict[transcript_key]["mRNA"].append(mrna_entry)
     # Iterate through the CDS list and pair entries with the same transcriptid
     for cds_entry in cds_list:
         transcript_key = f"{cds_entry['gene']}transcript{cds_entry['ID']}"
-        print(f'CDS transcript key: {transcript_key}')
         organized_dict[transcript_key]["CDS"].append(cds_entry)
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
 
-    print(f'paired_list: {paired_list}')
 
-
-
-    # Create a mapping of unique transcriptids to numbers
+    # Create a mapping of unique ncRNA transcriptids to numbers
     transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
     
     # Create a dictionary to organize ncRNA entries by transcript and type
@@ -575,7 +566,7 @@ def run(
     coordinates_output_file,
     nocut=None,
     apply_reverse_complement=False,
-    autoname=True,
+    autoname=False,
 ):  
     accession_number = accession
 
@@ -617,8 +608,6 @@ def run(
             else:
                 formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]}\n"
 
-
-
         # Automatically generate output file names if -autoname is provided
         if autoname:
             if not fasta_output_file:
@@ -639,7 +628,6 @@ def run(
         # Check if ".txt" is already at the end of the fasta_output_file argument
         if fasta_output_file and not fasta_output_file.endswith(".txt"):
             fasta_output_file += ".txt"
-
 
         # Check if need to reverse complement and write to txt file
         if not apply_reverse_complement:
