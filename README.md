@@ -3,7 +3,8 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **envistacoords.py**: query _Ensembl_ database with species and _genomic coordinates_
 * **envistagene.py**: query _Ensembl_ database with species and _gene name_
 * **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
-* **gbvistagene.py**: query with _GenBank_ database species and _gene name_
+* **gbvistagene.py**: query _GenBank_ database with species and _gene name_
+* **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbvistagene.py)
 
 ## Author
 Jake Leyhr (@jakeleyhr)
