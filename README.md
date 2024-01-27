@@ -339,11 +339,12 @@ options:
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
+```
 
 ## Notes
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 * For species with common names more than one word long (e.g. Alpine marmot or Spotted gar, as opposed to human or mouse), the full species name according to Ensembl must be used with underscores separating the words. For the Alpine marmot: marmota_marmota_marmota, and for the Spotted Gar: lepisosteus_oculatus
-```
+
 
 ## Bugs
 
