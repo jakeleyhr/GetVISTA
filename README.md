@@ -27,7 +27,7 @@ conda activate getvistaenv
 ```
 * install the package dependencies:
 ```
-pip install requests argparse
+pip install requests argparse biopython
 ```
 * Download the envistacoords.py and/or envistagene.py files
 * In the Miniconda terminal, navigate to the folder containing the .py files
