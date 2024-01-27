@@ -1,7 +1,9 @@
 # GetVISTA
 Query Ensembl to obtain genomic information in VISTA format. Useful for collecting sequences to run in [mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) multi-species alignment.
-* **vistacoords.py**: query with species and _genomic coordinates_
-* **vistagene.py**: query with species and _gene name_
+* **envistacoords.py**: query _Ensembl_ database with species and _genomic coordinates_
+* **envistagene.py**: query _Ensembl_ database with species and _gene name_
+* **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
+* **gbvistagene.py**: query with _GenBank_ database species and _gene name_
 
 ## Author
 Jake Leyhr (@jakeleyhr)
@@ -10,6 +12,7 @@ Jake Leyhr (@jakeleyhr)
 * Python 3.11
 * requests
 * argparse
+* biopython
 
 ## Quick start guide
 * Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
@@ -25,15 +28,15 @@ conda activate getvistaenv
 ```
 pip install requests argparse
 ```
-* Download the vistacoords.py and/or vistagene.py files
+* Download the envistacoords.py and/or envistagene.py files
 * In the Miniconda terminal, navigate to the folder containing the .py files
 * Then you're ready to start!
 
-# vistacoords.py usage
+# envistacoords.py usage
 
 ```
-$ python vistacoords.py -h
-usage: vistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev]
+$ python envistacoords.py -h
+usage: envistacoords.py [-h] [-s SPECIES] [-r REGION] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev]
                       [-autoname]
 
 Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.
@@ -54,10 +57,10 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
-## vistacoords.py inputs and outputs:
+## envistacoords.py inputs and outputs:
 The simplest inputs are the species name (**-s**) and region coordinates (**-r**), along with the -autoname flag:
 ```
-$ python vistacoords.py -s human -r 1:100000-200000 -autoname
+$ python envistacoords.py -s human -r 1:100000-200000 -autoname
 ```
 This produces the following output in the terminal:
 ```
@@ -71,7 +74,7 @@ Along with two text files - the first contains the coordinates of the exons and 
 
 Alternatively, the output file names can be specified manually using the **-anno** and **-fasta** arguments, e.g:
 ```
-$ python vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -fasta fastaoutput.txt
+$ python envistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -fasta fastaoutput.txt
 Extracting human coordinates: 1:100000-200000
 Assembly name: GRCh38
 Coordinates saved to annotationoutput.txt
@@ -80,17 +83,17 @@ Total sequence length 100001
 ```
 Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files. If, for example, only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
 ```
-$ python vistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -autoname             
+$ python envistacoords.py -s human -r 1:100000-200000 -anno annotationoutput.txt -autoname             
 Extracting human coordinates: 1:100000-200000
 Assembly name: GRCh38
 Coordinates saved to annotationoutput.txt
 DNA sequence saved to human_1:100000-200000.fasta.txt
 Total sequence length 100001
 ```
-## vistacoords.py specific arguments:
+## envistacoords.py specific arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
-$ python vistacoords.py -s human -r 1:950000-1000000 -autoname
+$ python envistacoords.py -s human -r 1:950000-1000000 -autoname
 ```
 ```
 ...
@@ -105,7 +108,7 @@ $ python vistacoords.py -s human -r 1:950000-1000000 -autoname
 ```
 However, by including the **-all** flag, all transcripts are included:
 ```
-$ python vistacoords.py -s human -r 1:950000-1000000 -autoname -all
+$ python envistacoords.py -s human -r 1:950000-1000000 -autoname -all
 ```
 ```
 ...
@@ -144,7 +147,7 @@ $ python vistacoords.py -s human -r 1:950000-1000000 -autoname -all
 ```
 Also by default, the script carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
 ```
-$ python vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
+$ python envistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 ```
 ```
 > 1 8054 Cenpa-205
@@ -158,7 +161,7 @@ $ python vistacoords.py -s mouse -r 5:30824121-30832175 -autoname
 ```
 If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bases inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation has been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
-$ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
+$ python envistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
 ```
 > 1 7454 Cenpa-205-cut5':500bp-cut3':100bp
@@ -170,7 +173,7 @@ $ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname
 ```
 This option can be turned off by including the **-nocut** flag, such that cut off parts of the gene are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
-$ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
+$ python envistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 ```
 ```
 > -499 7554 Cenpa-205
@@ -184,7 +187,7 @@ $ python vistacoords.py -s mouse -r 5:30824621-30832074 -autoname -nocut
 ```
 By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
 ```
-$ python vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
+$ python envistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 ```
 ```
 < 1 8054 Cenpa-205
@@ -199,10 +202,10 @@ $ python vistacoords.py -s mouse -r 5:30824121-30832174 -autoname -rev
 Note that the strand direction indicator has changed (> to <), and the 252bp 5' UTR is now at the bottom (3' end) of the file rather than the top, with the rest of the annotations following suit.
 
 
-# vistagene.py usage
+# envistagene.py usage
 ```
-$ python vistagene.py -h
-usage: vistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
+$ python envistagene.py -h
+usage: envistagene.py [-h] [-s SPECIES] [-gene GENE_NAME] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
 
 Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.
 
@@ -226,10 +229,10 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
-## vistagene.py inputs:
-The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to vistacoords.py described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and gene name are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
+## envistagene.py inputs:
+The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to envistacoords.py described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and gene name are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
 ```
-$ python vistagene.py -s mouse -gene gdf5 -autoname 
+$ python envistagene.py -s mouse -gene gdf5 -autoname 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
@@ -241,7 +244,7 @@ Coordinates saved to mouse_gdf5.annotation.txt
 ```
 Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene plus an additional 50,000bp from the 5' flank and an additional 20,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
-$ python vistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 20000 
+$ python envistagene.py -s mouse -gene gdf5 -autoname -sa 50000 -ea 20000 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
@@ -287,9 +290,59 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 73967 74073 exon
 74291 74345 exon
 ```
+
+# gbvistacoords.py usage
+```
+usage: gbvistacoords.py [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
+
+Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene feature coordinates in pipmaker format.
+
+options:
+  -h, --help            show this help message and exit
+  -a ACCESSION, --accession ACCESSION
+                        accession code
+  -c GENCOORDINATES, --gencoordinates GENCOORDINATES
+                        Genomic coordinates
+  -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
+                        Output file name for the DNA sequence in VISTA format
+  -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
+                        Output file name for the gene annotation coordinates
+  -nocut                Delete annotations not included in sequence
+  -rev                  Reverse complement DNA sequence and coordinates
+  -autoname             Automatically generate output file names based on accession and gene name
+```
+
+# gbvistagene.py usage
+```
+usage: gbvistagene.py [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
+                      [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
+
+Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format.
+
+options:
+  -h, --help            show this help message and exit
+  -s SPECIES, --species SPECIES
+                        Species name
+  -g GENE_SYMBOL, --gene_symbol GENE_SYMBOL
+                        Gene symbol
+  -r RECORD_ID, --record_id RECORD_ID
+                        Record ID number (default=0, the top match)
+  -sa START_ADJUST, --start_adjust START_ADJUST
+                        Number to subtract from the start coordinate (default: 0)
+  -ea END_ADJUST, --end_adjust END_ADJUST
+                        Number to add to the end coordinate (default: 0)
+  -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
+                        Output file name for the DNA sequence in VISTA format
+  -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
+                        Output file name for the gene coordinates
+  -nocut                Delete annotations not included in sequence
+  -rev                  Reverse complement DNA sequence and coordinates
+  -autoname             Automatically generate output file names based on accession and gene name
+
 ## Notes
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 * For species with common names more than one word long (e.g. Alpine marmot or Spotted gar, as opposed to human or mouse), the full species name according to Ensembl must be used with underscores separating the words. For the Alpine marmot: marmota_marmota_marmota, and for the Spotted Gar: lepisosteus_oculatus
+```
 
 ## Bugs
 
