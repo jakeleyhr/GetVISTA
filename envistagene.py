@@ -14,6 +14,7 @@ import json
 import time
 import argparse
 import requests
+import re
 from Bio import SeqIO
 from Bio.Seq import Seq
 
@@ -81,10 +82,215 @@ class EnsemblRestClient(object):
         )
         return genes
 
-# Function X - reverse pipmaker coordinates
+
+# Function 1 - get genomic coordinates and FASTA sequence
+def download_dna_sequence(species, gene_name, start_adjust, end_adjust):
+    # Ensembl REST API endpoint for gene lookup
+    endpoint = f"http://rest.ensembl.org/lookup/symbol/{species}/{gene_name}"
+
+    # Make the request to the Ensembl REST API (times out after 60 seconds)
+    response = requests.get(endpoint, headers={"Content-Type": "application/json"}, timeout = 60)
+    
+    # Get start and end coordinates from gene lookup
+    if response.status_code == 200:
+        gene_info = response.json()
+        if 'start' in gene_info and 'end' in gene_info:
+            gene_start_coordinate = gene_info['start']
+            gene_end_coordinate = gene_info['end']
+        else:
+            print(f"Coordinates not found for gene: {gene_name}")
+    else:
+        print(f"Failed to retrieve gene information. Status code: {response.status_code}")
+    print(gene_info)
+    # Adjust genomic coordinates according to gene and base adjust inputs
+    genomic_coordinates = f"{gene_info['seq_region_name']}:{gene_start_coordinate-start_adjust}-{gene_end_coordinate+end_adjust}" 
+
+    #Check if query sequence is >5Mb
+    coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
+    start = int(coordssplit.group(2))
+    end = int(coordssplit.group(3))
+    if (end - start + 1) > 5000000:
+        print("ERROR: Query sequence must be under 5Mb")
+        sys.exit()
+    
+    # Ensembl REST API endpoint for DNA sequences in FASTA format
+    url = f"https://rest.ensembl.org/sequence/region/{species}/{genomic_coordinates}?format=fasta" 
+ 
+    # Specify the headers with the required Content-Type
+    headers = {"Content-Type": "text/x-fasta"} 
+    # Make the request to the Ensembl REST API with the headers (times out after 60 seconds)
+    response = requests.get(url, headers=headers, timeout = 60) 
+    
+    # Print details
+    print(f"Assembly name: {gene_info['assembly_name']}")
+    print(f"{species} {gene_name} coordinates: {gene_info['seq_region_name']}:{gene_start_coordinate}-{gene_end_coordinate}")
+    print(f"{species} {gene_name} is on {gene_info['strand']} strand")
+    print(f"{species} {gene_name} sequence length: {gene_end_coordinate-gene_start_coordinate+1}bp")
+    print(f"Specified coordinates: {genomic_coordinates}")
+
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        # Parse the DNA sequence from the response
+        fasta_lines = response.text.strip().split('\n')
+    else:
+        print(f"Error: Unable to retrieve DNA sequence. Status code: {response.status_code}")
+        print(f"Response content: {response.text}")
+    
+    return genomic_coordinates, fasta_lines
+
+# Function 2 - get gene feature coordinates in pipmaker format
+def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts):
+    client = EnsemblRestClient()
+    
+    input_region_start = int(genomic_coordinates.split(":")[1].split("-")[0])
+    input_region_end = int(genomic_coordinates.split(":")[1].split("-")[1])
+    sequence_length = (input_region_end - input_region_start) + 1
+
+    print(f"Specified sequence length: {sequence_length}bp")
+    print("")
+    print(f"Transcripts included in region:")
+
+    coordinates_content = ""
+    for gene in genes:
+        gene_id = gene['id']
+        gene_info = client.perform_rest_action(
+            '/lookup/id/{0}'.format(gene_id),
+            params={'expand': '1', 'utr': '1'}
+        )
+        if gene_info and 'Transcript' in gene_info:
+            transcripts = gene_info['Transcript']
+            new_start = 1
+
+            for transcript in transcripts:
+                if all_transcripts:
+                    filter_type = 'all'
+                else:
+                    filter_type = 'canonical'
+
+                if filter_type == 'all' or ('is_canonical' in transcript and transcript['is_canonical'] == 1):
+                    strand_indicator = ">" if gene_info['strand'] == 1 else "<"
+                    start_position = transcript.get('start') - input_region_start + new_start
+                    end_position = transcript.get('end') - input_region_start + new_start
+                    transcript_name = transcript.get('display_name', transcript['id'])
+                    print(transcript_name)
+
+                    if start_position < 0 and end_position < 0:
+                        print(f"({transcript_name} transcript out of 5' range:{start_position}:{end_position})")
+                    if start_position > sequence_length and end_position > sequence_length:
+                        print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
+                        
+
+                    if nocut == False:
+                        if not (start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length):
+                            if start_position < 0:
+                                if apply_reverse_complement:
+                                    transcript_name += f"-cut3':{1 - start_position}bp"
+                                else:
+                                    transcript_name += f"-cut5':{1 - start_position}bp"
+                                start_position = 1
+                            if end_position > sequence_length:
+                                if apply_reverse_complement:
+                                    transcript_name += f"-cut5':{end_position - sequence_length}bp"
+                                else:
+                                    transcript_name += f"-cut3':{end_position - sequence_length}bp"
+                                end_position = sequence_length
+                            coordinates_content += f"{strand_indicator} {start_position} {end_position} {transcript_name}\n" # Assemble header line
+                    else: 
+                        coordinates_content += f"{strand_indicator} {start_position} {end_position} {transcript_name}\n" # Assemble header line
+
+
+                    coordinates = []
+
+                    if 'Exon' in transcript:
+                        exons = transcript['Exon']
+                        for exon in exons:
+                            start = exon.get('start') - input_region_start + new_start
+                            end = exon.get('end') - input_region_start + new_start
+
+                            if nocut == False:
+                                if start < 0 and end < 0:
+                                    continue
+                                if start > sequence_length and end > sequence_length:
+                                    continue
+                                if start < 0:
+                                    start = 0
+                                if end > sequence_length:
+                                    end = sequence_length
+
+                            utr_start = 0
+                            utr_end = 0
+
+                            if 'UTR' in transcript:
+                                utrs = transcript['UTR']
+                                for utr in utrs:
+                                    utr_start = utr.get('start') - input_region_start + new_start
+                                    utr_end = utr.get('end') - input_region_start + new_start
+
+                                    if nocut == False:
+                                        if utr_start < sequence_length and utr_end > sequence_length:
+                                            utr_end = sequence_length
+
+                                    if start == utr_start and end == utr_end:
+                                        start = 0
+                                        end = 0
+                                    elif utr_start <= start <= utr_end:
+                                        start = utr_end + 1
+                                    elif utr_start <= end <= utr_end:
+                                        end = utr_start - 1
+
+                                    if nocut == False:
+                                        if start > sequence_length and end > sequence_length:
+                                            start = 0
+                                            end = 0
+                                            continue
+                                        if end > sequence_length:
+                                            end = sequence_length
+                                            continue
+                                        if utr_start < 0 and utr_end < 0:
+                                            continue
+                                        if utr_start < 0:
+                                            utr_start = 0
+
+                            coordinates.append((f"{start} {end} exon", start))
+
+                        if 'UTR' in transcript:
+                            utrs = transcript['UTR']
+                            for utr in utrs:
+                                utr_start_abs = utr.get('start')
+                                utr_end_abs = utr.get('end')
+                                utr_start = utr_start_abs - input_region_start + new_start
+                                utr_end = utr_end_abs - input_region_start + new_start
+
+                                if nocut == False:
+                                    if utr_start < 0 and utr_end < 0:
+                                        continue
+                                    if utr_start > sequence_length and utr_end > sequence_length:
+                                        continue
+                                    if utr_start < 0 and utr_end > 0:
+                                        utr_start = 0
+                                    if utr_start < sequence_length and utr_end > sequence_length:
+                                        utr_end = sequence_length
+
+                                coordinates.append((f"{utr_start} {utr_end} UTR", utr_start))
+
+                    else:
+                        print("No exons found in the transcript.")
+
+                    coordinates.sort(key=lambda x: x[1])
+                    for coord, _ in coordinates:
+                        if coord.strip() != "0 0 exon" and "0 0 UTR":
+                            coordinates_content += f"{coord}\n"
+                    coordinates_content += "\n\n"
+
+    return coordinates_content, sequence_length
+
+# Function A - reverse pipmaker coordinates
 def reverse_coordinates(coordinates, sequence_length):
+    # Prepare to collect reversed coordianates
     reversed_coordinates = []
-    transcript_lines = []  # Collect lines for each transcript
+
+    # Prepare to collect lines for each transcript
+    transcript_lines = []
     for line in coordinates.split('\n'):
         if line:
             fields = line.split()
@@ -125,281 +331,110 @@ def reverse_coordinates(coordinates, sequence_length):
 
     return '\n'.join(reversed_coordinates)
 
-# Function Y - Download DNA sequence
-def download_dna_sequence(species, gene_name, start_adjust, end_adjust, output_filename=None, apply_reverse_complement=False):
-    # Ensembl REST API endpoint for gene lookup
-    endpoint = f"http://rest.ensembl.org/lookup/symbol/{species}/{gene_name}"
 
-    # Make the request to the Ensembl REST API (times out after 60 seconds)
-    response = requests.get(endpoint, headers={"Content-Type": "application/json"}, timeout = 60)
-    
-    # Get start and end coordinates from gene lookup
-    if response.status_code == 200:
-        gene_info = response.json()
-        if 'start' in gene_info and 'end' in gene_info:
-            gene_start_coordinate = gene_info['start']
-            gene_end_coordinate = gene_info['end']
-        else:
-            print(f"Coordinates not found for gene: {gene_name}")
-    else:
-        print(f"Failed to retrieve gene information. Status code: {response.status_code}")
+def run(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False, autoname=False):
+    # Get genomic coordinates from gene record and adjustments
+    genomic_coordinates, fasta_lines = download_dna_sequence(species, gene_name, start_adjust, end_adjust)
 
-    # Adjust genomic coordinates according to gene and base adjust inputs
-    genomic_coordinates = f"{gene_info['seq_region_name']}:{gene_start_coordinate-start_adjust}-{gene_end_coordinate+end_adjust}" 
-    
-    # Ensembl REST API endpoint for DNA sequences in FASTA format
-    url = f"https://rest.ensembl.org/sequence/region/{species}/{genomic_coordinates}?format=fasta" 
-    # Specify the headers with the required Content-Type
-    headers = {"Content-Type": "text/x-fasta"} 
-    # Make the request to the Ensembl REST API with the headers (times out after 60 seconds)
-    response = requests.get(url, headers=headers, timeout = 60) 
-    
-    # Print details
-    print(f"Assembly name: {gene_info['assembly_name']}")
-    print(f"{species} {gene_name} coordinates: {gene_info['seq_region_name']}:{gene_start_coordinate}-{gene_end_coordinate}")
-    print(f"{species} {gene_name} is on {gene_info['strand']} strand")
-    print(f"{species} {gene_name} sequence length: {gene_end_coordinate-gene_start_coordinate+1}bp")
-    print(f"Extracting coordinates: {genomic_coordinates}")
-
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        # Parse the DNA sequence from the response
-        fasta_lines = response.text.strip().split('\n')
-        header_line = fasta_lines[0][1:] # first line is the header, remove the >
-        dna_sequence = Seq(''.join(fasta_lines[1:]))
-
-        # Save the DNA sequence to the specified output file
-        if output_filename:
-            if not apply_reverse_complement:
-                # Create a SeqRecord object and save it in FASTA format
-                fasta_record = SeqIO.SeqRecord(
-                    dna_sequence, 
-                    id=str(header_line), 
-                    description="",
-                    )
-                print(f"DNA sequence saved to {output_filename}")
-            else:
-                # Reverse complement the sequence
-                reverse_complement_sequence = str(dna_sequence.reverse_complement())
-                last_colon_1_index = header_line.rfind(":1") # Find the strand indicator in FASTA header
-                reversed_header_line = header_line[:last_colon_1_index] + ":-1" + header_line[last_colon_1_index+2:] # Replace ":1" with ":-1" in the header line
-                # Create a SeqRecord object and save it in FASTA format
-                fasta_record = SeqIO.SeqRecord(
-                    Seq(reverse_complement_sequence),
-                    id=reversed_header_line,
-                    description="",
-                )
-                print(f"Reverse complement DNA sequence saved to {output_filename}")
-            # Write to file
-            SeqIO.write(fasta_record, f"{output_filename}", "fasta")
-
-        else:
-            print("No sequence output file specified")
-    else:
-        print(f"Error: Unable to retrieve DNA sequence. Status code: {response.status_code}")
-        print(f"Response content: {response.text}")
-    
-    return genomic_coordinates
-
-
-def run_gene_coordinates(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False):
-    genomic_coordinates = download_dna_sequence(species, gene_name, start_adjust, end_adjust, fasta_output_file, apply_reverse_complement)
+    # Get genes info
     client = EnsemblRestClient()
-    gene_info = client.get_genes_in_genomic_coordinates(species, genomic_coordinates)
-    if gene_info:
-        if coordinates_output_file:
-            with open(coordinates_output_file, 'w') as coordinates_file:
-                input_region_start = int(genomic_coordinates.split(":")[1].split("-")[0])  # Extracting start position from the input region
-                input_region_end = int(genomic_coordinates.split(":")[1].split("-")[1])  # Extracting end position from the input region
-                sequence_length = (input_region_end - input_region_start) + 1 # Calculating total sequence length
-                print(f"Total sequence length: {sequence_length}bp")
+    genes = client.get_genes_in_genomic_coordinates(species, genomic_coordinates)   
 
-                for gene in gene_info:
-                    gene_id = gene['id']
-                    gene_info = client.perform_rest_action(
-                        '/lookup/id/{0}'.format(gene_id),
-                        params={'expand': '1', 'utr': '1'} # Essential for obtaining UTR information
-                    )
-                    #print("Gene Info:", gene_info)  # Add this line for debugging
-                    if gene_info and 'Transcript' in gene_info:
-                        transcripts = gene_info['Transcript']
-                        new_start = 1
+    # Get coordinates and sequence length
+    coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)
 
-                        for transcript in transcripts:
-                            #print("Transcript:", transcript)  # Add this line for debugging
+    # Automatically generate output file names if -autoname is provided
+    coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
+    chrom = coordssplit.group(1)
+    start = coordssplit.group(2)
+    end = coordssplit.group(3)
+    if autoname and (start_adjust or end_adjust):
+        if not fasta_output_file:
+            if not apply_reverse_complement:
+                fasta_output_file = f"{species}_{gene_name}_{chrom}_{start}-{end}.fasta.txt"
+            else:
+                fasta_output_file = (f"{species}_{gene_name}_{chrom}_{start}-{end}_revcomp.fasta.txt")
+        if not coordinates_output_file:
+            if not apply_reverse_complement:
+                coordinates_output_file = (f"{species}_{gene_name}_{chrom}_{start}-{end}.annotation.txt")
+            else:
+                coordinates_output_file = (f"{species}_{gene_name}_{chrom}_{start}-{end}_revcomp.annotation.txt")
+    if autoname and not (start_adjust or end_adjust):
+        if not fasta_output_file:
+            if not apply_reverse_complement:
+                fasta_output_file = f"{species}_{gene_name}.fasta.txt"
+            else:
+                fasta_output_file = (f"{species}_{gene_name}_revcomp.fasta.txt")
+        if not coordinates_output_file:
+            if not apply_reverse_complement:
+                coordinates_output_file = (f"{species}_{gene_name}.annotation.txt")
+            else:
+                coordinates_output_file = (f"{species}_{gene_name}_revcomp.annotation.txt")       
 
-                            # Choose to return annotations for all transcripts or just the canonical ones
-                            if all_transcripts:
-                                filter_type = 'all'
-                            else:
-                                filter_type = 'canonical'
+    # Check if ".txt" is already at the end of the coordinates_output_file argument
+    if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
+        coordinates_output_file += ".txt"
 
-                            if filter_type == 'all' or ('is_canonical' in transcript and transcript['is_canonical'] == 1):
-                                strand_indicator = ">" if gene_info['strand'] == 1 else "<" # Determines strand direction
-                                start_position = transcript.get('start') - input_region_start + new_start # Calculate transcript start coordinate relative to region
-                                #print(f'transcript start: {start_position}')
-                                end_position = transcript.get('end') - input_region_start + new_start # Calculate transcript end coordinate relative to region
-                                #print(f'transcript end: {end_position}')
-                                transcript_name = transcript.get('display_name', transcript['id']) # Get transcript name
-                                
-                                # Check if any of the transcripts are entirely out of range
-                                if start_position < 0 and end_position < 0: # If entire transcript is out of region range, ignore it.
-                                        print(f"{transcript_name} transcript out of 5' range:{start_position}:{end_position}")
-                                        continue
-                                if start_position > sequence_length and end_position > sequence_length: # If entire transcript is out of region range, ignore it.
-                                        print(f"{transcript_name} transcript out of 3' range:{start_position}:{end_position}")
-                                        continue
-                                
-                                # if run without -nocut option:
-                                if nocut == False:
-                                    if start_position < 0: # If only the start of the transcript is out of range, set the start position to 1 and add cut flag to transcript name
-                                        if apply_reverse_complement:
-                                            transcript_name += f"-cut3':{1-start_position}bp"
-                                        else:
-                                            transcript_name += f"-cut5':{1-start_position}bp"
-                                        start_position = 1
+    # Check if ".txt" is already at the end of the fasta_output_file argument
+    if fasta_output_file and not fasta_output_file.endswith(".txt"):
+        fasta_output_file += ".txt"
 
-                                    if end_position > sequence_length: # If only the end of the transcript is out of range, set the end position to sequence_length (maximum of range) and add cut flag to transcript name
-                                        if apply_reverse_complement:
-                                            transcript_name += f"-cut5':{end_position-sequence_length}bp"
-                                        else:
-                                            transcript_name += f"-cut3':{end_position-sequence_length}bp"
-                                        end_position = sequence_length
-                                        
-                                coordinates_file.write(f"{strand_indicator} {start_position} {end_position} {transcript_name}\n") # Write the transcript header line to coordinates file
-
-                                coordinates = []
-
-                                ## Gather exon information
-                                if 'Exon' in transcript:
-                                    exons = transcript['Exon']
-                                    for exon in exons:
-                                        start = exon.get('start') - input_region_start + new_start # Calculate exon start coordinate relative to region
-                                        #print(f'exon start: {start}')
-                                        end = exon.get('end') - input_region_start + new_start # Calculate exon end coordinate relative to region
-                                        #print(f'exon end: {end}')
-
-                                        # if run without -nocut option:
-                                        if nocut == False:
-                                            if start < 0 and end < 0: # If whole exon is 5' out of region, ignore it
-                                                continue
-                                            if start > sequence_length and end > sequence_length: # If whole exon is 3' out of region, ignore it
-                                                continue
-                                            if start < 0: # If only the start of the exon is 5' out of region, set the start coordinate to 0
-                                                start = 0
-                                            if end > sequence_length: # If only the end of the exon is 3' out of region, set the end coordinate to sequence_length (maximum of range)
-                                                end = sequence_length
-
-                                        # Initialize separate UTR start and end
-                                        utr_start = 0  
-                                        utr_end = 0
-
-                                        ## Examine UTRs to modify exon extents
-                                        if 'UTR' in transcript:
-                                            utrs = transcript['UTR']
-                                            for utr in utrs:
-                                                utr_start = utr.get('start') - input_region_start + new_start # Calculate UTR start coordinate relative to region
-                                                #print(f'utr start: {utr_start}')
-                                                utr_end = utr.get('end') - input_region_start + new_start # Calculate UTR end coordinate relative to region
-                                                #print(f'utr end: {utr_end}')
-                                                
-                                                # if run without -nocut option:
-                                                if nocut == False:
-                                                    if utr_start < sequence_length and utr_end > sequence_length: # If UTR end is 3' out of region, set the end coordinate to sequence_length (maximum of range)
-                                                        utr_end = sequence_length
-                                                    
-                                                if start == utr_start and end == utr_end: # If 'exon' overlaps entirely with annotated UTR, set 'exon' coordinates to 0 0 (to be removed later) - gives UTR priority
-                                                    start = 0
-                                                    end = 0
-                                                elif utr_start <= start <= utr_end: # If exon start lies inside UTR, give UTR priority and set exon start coordinate to begin after UTR ends
-                                                    start = utr_end + 1
-                                                    #print(f'start_final {start}')
-                                                elif utr_start <= end <= utr_end: # If exon end lies inside UTR, give UTR priority and set exon end coordinate to begin before UTR starts
-                                                    end = utr_start - 1
-                                                    #print(f'end_final {end}')
-                                                
-                                                # if run without -nocut option:
-                                                if nocut == False:
-                                                    if start > sequence_length and end > sequence_length: # If whole exon is 3' out of region, set exon coordinates to 0 0 (to be removed later)
-                                                        start = 0
-                                                        end = 0
-                                                        continue
-                                                    if end > sequence_length: # If only the end of the UTR is 3' out of region, set the end coordinate to sequence_length (maximum of range)
-                                                        end = sequence_length
-                                                        continue
-                                                    if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it
-                                                        continue
-                                                    if utr_start < 0: # If only the start of the UTR is 5' out of region, set the start coordinate to 0
-                                                        utr_start = 0
-
-                                        coordinates.append((f"{start} {end} exon", start)) # Append the exon lines to coordinates object
-                                    
-                                    ## Gather UTR information
-                                    if 'UTR' in transcript:
-                                        utrs = transcript['UTR']
-                                        for utr in utrs:
-                                            utr_start_abs = utr.get('start') # Get absolute coordinate of UTR start
-                                            utr_end_abs = utr.get('end') # Get absolute coordinate of UTR end
-                                            utr_start = utr_start_abs - input_region_start + new_start # Calculate UTR start coordinate relative to region
-                                            #print(f'utr_start_abs {utr_start_abs}')
-                                            #print(f'utr_start {utr_start}')
-                                            utr_end = utr_end_abs - input_region_start + new_start # Calculate UTR end coordinate relative to region
-                                            #print(f'utr_end_abs {utr_end_abs}')
-                                            #print(f'utr_end {utr_end}')
-
-                                            # if run without -nocut option:
-                                            if nocut == False:
-                                                if utr_start < 0 and utr_end < 0: # If whole UTR is 5' out of region, ignore it
-                                                    continue
-                                                if utr_start > sequence_length and utr_end > sequence_length: # If whole UTR is 3' out of region, ignore it
-                                                    continue
-                                                if utr_start < 0 and utr_end > 0: # If UTR start is 5' out of region, set the start coordinate to 0
-                                                    utr_start = 0
-                                                if utr_start < sequence_length and utr_end > sequence_length: # If UTR end is 3' out of region, set the end coordinate to sequence_length (maximum of range)
-                                                    utr_end = sequence_length
-
-                                            coordinates.append((f"{utr_start} {utr_end} UTR", utr_start)) # Append the UTR lines to coordinates object
-                                
-                                else:
-                                    print("No exons found in the transcript.")
-
-                                coordinates.sort(key=lambda x: x[1]) # Sort coordinate lines by start coordinate
-
-                                # Write coordinate lines to coordinates file, except lines with 0 0 coordinates (flagged for removal earlier)
-                                for coord, _ in coordinates:
-                                    if coord.strip() != "0 0 exon" and "0 0 UTR":
-                                        coordinates_file.write(f"{coord}\n")
-                                coordinates_file.write("\n\n") # Add 2 blank lines after each transcript block
-
-            # If run with -anno (save annotation coordinates):
-            if coordinates_output_file:
-                with open(coordinates_output_file, 'r') as coordinates_file:
-                    coordinates_content = coordinates_file.read()
-
-                # If run with -rev option, reverse complement coordinates
-                if apply_reverse_complement:
-                    reversed_coordinates = reverse_coordinates(coordinates_content, sequence_length) # Reverse the coordinates
-                    # Save the reversed coordinates to the specified output file
-                    with open(coordinates_output_file, 'w') as reversed_coordinates_file:
-                        reversed_coordinates_file.write(reversed_coordinates)
-                    print(f"Reversed coordinates saved to {coordinates_output_file}")
-
-                # Otherwise, write original coordinates to file
-                else:
-                    with open(coordinates_output_file, 'w') as coordinates_file:
-                        coordinates_file.write(coordinates_content)
-                    print(f"Coordinates saved to {coordinates_output_file}")  
-
+    print("")
+    # If run with -anno (save annotation coordinates):
+    if coordinates_output_file:
+        if apply_reverse_complement:
+            reversed_coordinates = reverse_coordinates(coordinates_content, sequence_length) # Reverse the coordinates
+            # Save the reversed coordinates to the specified output file
+            with open(coordinates_output_file, 'w') as reversed_coordinates_file:
+                reversed_coordinates_file.write(reversed_coordinates)
+            print(f"Reversed coordinates saved to {coordinates_output_file}")   
+        # Otherwise, write original coordinates to file
         else:
-            print("No coordinates output file specified.") # Print to notify user neither annotation nor fasta file specified as outputs
+            with open(coordinates_output_file, 'w') as coordinates_file:
+                coordinates_file.write(coordinates_content)
+            print(f"Coordinates saved to {coordinates_output_file}")  
 
     else:
-        print("No genes found in the specified region.")
+        print("No coordinates output file specified.") # Print to notify user no annotation file specified as outputs
+
+    # Split FASTA header line from DNA sequence
+    header_line = fasta_lines[0][1:] # first line is the header, remove the >
+    dna_sequence = Seq(''.join(fasta_lines[1:]))
+    # Save the DNA sequence to the specified output file
+    if fasta_output_file:
+        if not apply_reverse_complement:
+            # Create a SeqRecord object and save it in FASTA format
+            fasta_record = SeqIO.SeqRecord(
+                dna_sequence, 
+                id=str(header_line), 
+                description="",
+                )
+            print(f"DNA sequence saved to {fasta_output_file}")
+        else:
+            # Reverse complement the sequence
+            reverse_complement_sequence = str(dna_sequence.reverse_complement())
+            last_colon_1_index = header_line.rfind(":1") # Find the strand indicator in FASTA header
+            reversed_header_line = header_line[:last_colon_1_index] + ":-1" + header_line[last_colon_1_index+2:] # Replace ":1" with ":-1" in the header line
+            # Create a SeqRecord object and save it in FASTA format
+            fasta_record = SeqIO.SeqRecord(
+                Seq(reverse_complement_sequence),
+                id=reversed_header_line,
+                description="",
+            )
+            print(f"Reverse complement DNA sequence saved to {fasta_output_file}")
+        # Write to file
+        SeqIO.write(fasta_record, f"{fasta_output_file}", "fasta")   
+    else:
+        print("No sequence output file specified") # Print to notify user neither sequence specified as output
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Download DNA sequences in FASTA format and gene annotation coordinates in VISTA format from Ensembl.")
+    # Create an ArgumentParser
+    parser = argparse.ArgumentParser(description="Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature coordinates in pipmaker format.")
+    
+    # Add arguments for species, gene_symbol etc
     parser.add_argument("-s", "--species",required=True, help="Species name (e.g., 'Homo_sapiens' or 'Human')")
-    parser.add_argument("-gene", "--gene_name", required=True, help="Gene name")
+    parser.add_argument("-g", "--gene_name", required=True, help="Gene name")
     parser.add_argument("-sa", "--start_adjust", type=int, default=0, help="Number to subtract from the start coordinate (default: 0)")
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in FASTA format")
@@ -408,17 +443,12 @@ if __name__ == '__main__':
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true",default=False, help="Automatically generate output file names based on species and gene name")
+    
+    # Parse the command-line arguments
     args = parser.parse_args()
 
-    # Automatically generate output file names if -autoname is provided
-    if args.autoname:
-        if not args.fasta_output_file:
-            args.fasta_output_file = f"{args.species}_{args.gene_name}.fasta.txt"
-        if not args.coordinates_output_file:
-            args.coordinates_output_file = f"{args.species}_{args.gene_name}.annotation.txt"
-
     # Pass arguments in the correct order
-    run_gene_coordinates(
+    run(
         args.species, 
         args.gene_name, 
         args.start_adjust, 
@@ -427,5 +457,6 @@ if __name__ == '__main__':
         args.coordinates_output_file, 
         args.all_transcripts, 
         args.nocut, 
-        args.rev
+        args.rev,
+        args.autoname
     )
