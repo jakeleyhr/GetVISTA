@@ -90,7 +90,7 @@ def download_dna_sequence(species, genomic_coordinates):
     headers = {"Content-Type": "text/x-fasta"} 
     # Make the request to the Ensembl REST API with the headers (times out after 60 seconds)
     response = requests.get(url, headers=headers, timeout = 60)
-
+    
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         # Parse the DNA sequence from the response
@@ -306,7 +306,9 @@ def run(species, genomic_coordinates, fasta_output_file=None, coordinates_output
 
     # Get genes info
     client = EnsemblRestClient()
-    genes = client.get_genes_in_region(species, genomic_coordinates)   
+    genes = client.get_genes_in_region(species, genomic_coordinates)
+
+    print(f"Assembly name: {genes[0]['assembly_name']}")
 
     # Get coordinates and sequence length
     coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)
@@ -384,8 +386,10 @@ def run(species, genomic_coordinates, fasta_output_file=None, coordinates_output
         print("No sequence output file specified") # Print to notify user neither sequence specified as output
 
 if __name__ == '__main__':
-    # Specify arguments:
-    parser = argparse.ArgumentParser(description="Download DNA sequences in FASTA format and gene annotation coordinates in pipmaker format from Ensembl.")
+    # Create an ArgumentParser
+    parser = argparse.ArgumentParser(description="Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in FASTA format and gene feature coordinates in pipmaker format.")
+    
+    # Add arguments for species, gene_symbol etc
     parser.add_argument("-s", "--species", required=True, help="Species name (e.g., 'Homo_sapiens' or 'Human')")
     parser.add_argument("-c", "--gencoordinates", required=True, help="Genomic coordinates (e.g., 1:1000-2000)")
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in FASTA format")
@@ -394,8 +398,11 @@ if __name__ == '__main__':
     parser.add_argument("-nocut", action="store_true", default=False, help="Don't delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on species and gene name")
-    args = parser.parse_args()  # Parse arguments
+    
+    # Parse the command-line arguments
+    args = parser.parse_args() 
 
+    # Pass arguments in the correct order
     run(
         args.species,
         args.gencoordinates,
