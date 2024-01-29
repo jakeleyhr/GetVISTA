@@ -344,7 +344,7 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no -all option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000:600000).
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no -all option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 # gbgene usage
 ```
 usage: gbgene [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
