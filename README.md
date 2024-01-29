@@ -25,22 +25,20 @@ conda create -n getvistaenv python=3.11
 ```
 conda activate getvistaenv
 ```
-* install the package dependencies:
+* install the package:
 ```
-pip install requests argparse biopython
+pip install getvista
 ```
-* Download the envistacoords.py and/or envistagene.py files
-* In the Miniconda terminal, navigate to the folder containing the .py files
 * Then you're ready to start!
 
-# envistacoords.py usage
+# encoords usage
 
 ```
-$ python envistacoords.py -h
-usage: envistacoords.py [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE]
-                        [-all] [-nocut] [-rev] [-autoname]
+$ encoords -h
+usage: encoords [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all]
+                [-nocut] [-rev] [-autoname]
 
-Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in FASTA format and
+Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in fasta format and
 gene feature coordinates in pipmaker format.
 
 options:
@@ -59,10 +57,10 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
-## envistacoords.py inputs and outputs:
-The simplest inputs are the species name (**-s**) and region coordinates (**-r**), along with the -autoname flag:
+## encoords inputs and outputs:
+The simplest inputs are the species name (**-s**) and region coordinates (**-c**), along with the -autoname flag:
 ```
-$ python envistacoords.py -s human -c 1:10000-20000 -autoname
+$ encoords -s human -c 1:10000-20000 -autoname
 ```
 This produces the following output in the terminal:
 ```
@@ -78,11 +76,11 @@ WASH7P-201
 Coordinates saved to human_1_10000-20000.annotation.txt
 DNA sequence saved to human_1_10000-20000.fasta.txt
 ```
-Along with two text files - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected in pipmaker format, and the second contains the DNA sequence of the selected region in FASTA format. By using the **-autoname** flag, the names of these files were automatically generated from the species and region inputs.
+Two text files are generated in the working directory - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected in pipmaker format, and the second contains the DNA sequence of the selected region in fasta format. By using the **-autoname** flag, the names of these files were automatically generated from the species and region inputs.
 
 Alternatively, the output file names can be specified manually using the **-anno** and **-fasta** arguments, e.g:
 ```
-$ python envistacoords.py -s human -c 1:10000-20000 -anno annotationoutput.txt -fasta fastaoutput.txt
+$ encoords -s human -c 1:10000-20000 -anno annotationoutput.txt -fasta fastaoutput.txt
 Assembly name: GRCh38
 Specified sequence length: 10001bp
 
@@ -97,7 +95,7 @@ DNA sequence saved to fastaoutput.txt
 ```
 Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files. If, for example, only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
 ```
-$ python envistacoords.py -s human -c 1:10000-20000 -anno annotationoutput.txt -autoname             
+$ encoords -s human -c 1:10000-20000 -anno annotationoutput.txt -autoname             
 Assembly name: GRCh38
 Specified sequence length: 10001bp
 
@@ -110,10 +108,10 @@ WASH7P-201
 Coordinates saved to annotationoutput.txt
 DNA sequence saved to human_1_10000-20000.fasta.txt
 ```
-## envistacoords.py specific arguments:
+## encoords specific arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
-$ python envistacoords.py -s human -c 1:950000-1000000 -autoname
+$ encoords -s human -c 1:950000-1000000 -autoname
 ```
 ```
 ...
@@ -128,7 +126,7 @@ $ python envistacoords.py -s human -c 1:950000-1000000 -autoname
 ```
 However, by including the **-all** flag, all transcripts are included:
 ```
-$ python envistacoords.py -s human -c 1:950000-1000000 -autoname -all
+$ encoords -s human -c 1:950000-1000000 -autoname -all
 ```
 ```
 ...
@@ -167,7 +165,7 @@ $ python envistacoords.py -s human -c 1:950000-1000000 -autoname -all
 ```
 Also by default, the script carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
 ```
-$ python envistacoords.py -s mouse -c 5:30824121-30832174 -autoname
+$ encoords -s mouse -c 5:30824121-30832174 -autoname
 ```
 ```
 > 1 8054 Cenpa-205
@@ -181,7 +179,7 @@ $ python envistacoords.py -s mouse -c 5:30824121-30832174 -autoname
 ```
 If the region 5:30824621-30832074 is specified instead, which cuts off 500bp from the 5' end and 100bp from the 3' end, The resulting annotation file is adjusted to include only bases inside the region. In this case, the 5' UTR and 1st exon have been deleted entirely, and the 3' UTR has been truncated. Information about the truncation has been added to the transcript name (Cenpa-205-cut5':500bp-cut3':100bp) to make it clear to the user that the selection has cut off part of the gene.
 ```
-$ python envistacoords.py -s mouse -c 5:30824621-30832074 -autoname
+$ encoords -s mouse -c 5:30824621-30832074 -autoname
 ```
 ```
 > 1 7454 Cenpa-205-cut5':500bp-cut3':100bp
@@ -193,7 +191,7 @@ $ python envistacoords.py -s mouse -c 5:30824621-30832074 -autoname
 ```
 This option can be turned off by including the **-nocut** flag, such that cut-off parts of the gene are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
-$ python envistacoords.py -s mouse -c 5:30824621-30832074 -autoname -nocut
+$ encoords -s mouse -c 5:30824621-30832074 -autoname -nocut
 ```
 ```
 > -499 7554 Cenpa-205
@@ -207,7 +205,7 @@ $ python envistacoords.py -s mouse -c 5:30824621-30832074 -autoname -nocut
 ```
 By default, the specified genomic region is read on the forward strand, but for some purposes a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. Returning to the mouse Cenpa gene as an example, this is the output when extracting the whole gene with **-rev**:
 ```
-$ python envistacoords.py -s mouse -c 5:30824121-30832174 -autoname -rev
+$ encoords -s mouse -c 5:30824121-30832174 -autoname -rev
 ```
 ```
 < 1 8054 Cenpa-205
@@ -222,11 +220,11 @@ $ python envistacoords.py -s mouse -c 5:30824121-30832174 -autoname -rev
 Note that the strand direction indicator has changed (> to <), and the 252bp 5' UTR is now at the bottom (3' end) of the file rather than the top, with the rest of the annotations following suit.
 
 
-# envistagene.py usage
+# engene usage
 ```
-$ python envistagene.py -h
-usage: envistagene.py [-h] -s SPECIES -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
-                      [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
+$ engene -h
+usage: engene [-h] -s SPECIES -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
+              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
 
 Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature
 coordinates in pipmaker format.
@@ -251,10 +249,10 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
 ```
-## envistagene.py inputs:
-The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to envistacoords.py described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and _gene name_ are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
+## engene inputs:
+The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to encoords described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and _gene name_ are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
 ```
-$ python envistagene.py -s mouse -g gdf5 -autoname 
+$ engene -s mouse -g gdf5 -autoname 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
@@ -271,7 +269,7 @@ DNA sequence saved to mouse_gdf5.fasta.txt
 ```
 Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the gdf5 gene plus an additional 50,000bp from the 5' flank and an additional 20,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
-$ python envistagene.py -s mouse -g gdf5 -autoname -sa 50000 -ea 20000 
+$ engene -s mouse -g gdf5 -autoname -sa 50000 -ea 20000 
 Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on -1 strand
@@ -345,7 +343,7 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This script functions identically to envistacoords.py, except that it querys the GenBank nucleotide database rather than Ensembl.
+This script functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no -all option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000:600000).
 # gbvistagene.py usage
 ```
 usage: gbvistagene.py [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
@@ -373,11 +371,12 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This script functions identically to envistacoords.py, except that it querys the GenBank nucleotide database rather than Ensembl.
+This script functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly).
 
 ## Notes
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 * For species with common names more than one word long (e.g. Alpine marmot or Spotted gar, as opposed to human or mouse), the full species name according to Ensembl must be used with underscores separating the words. For the Alpine marmot: marmota_marmota_marmota, and for the Spotted Gar: lepisosteus_oculatus
+* The requests to GenBank sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords, gbgene, or gbrecord, try running the command once or twice again, and the query should go through.
 
 
 ## Bugs
