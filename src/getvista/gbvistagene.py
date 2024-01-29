@@ -102,6 +102,11 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
             print(f"Locus: {locus}")
         except KeyError:
             print("Locus: None available")
+        try:
+            strand = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]["Seq-loc_int"]["Seq-interval"]["Seq-interval_strand"]["Na-strand"].attributes['value']
+            print(f"Strand: {strand}")
+        except KeyError:
+            print(f"Strand: None available")
 
         try:
             assembly = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_label"]
@@ -136,7 +141,8 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         #explore_structure(gene_info[0]['Entrezgene_locus'])
 
     else:
-        print(f"No gene information found for {gene_symbol} in {species}.")
+        print(f"No gene information found for {gene_symbol} in {species}. Check the names are correct.")
+        sys.exit()
 
     # Calculate region start and end based on the gene start and end coordinates +/- the user-provided adjustment values
     requested_start_position = start - start_adjust
