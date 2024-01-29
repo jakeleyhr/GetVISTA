@@ -326,9 +326,11 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 
 # gbcoords usage
 ```
-usage: gbcoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
+usage: gbcoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE]
+                        [-x] [-nocut] [-rev] [-autoname]
 
-Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene feature coordinates in pipmaker format.
+Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene feature
+coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -340,17 +342,19 @@ options:
                         Output file name for the DNA sequence in VISTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene annotation coordinates
+  -x                    Include predicted (not manually curacted) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particualrly relevant when exploring new geomes with few manually curated genes/transcripts. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 # gbgene usage
 ```
-usage: gbgene [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
-                      [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
+usage: gbgene [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST]
+                      [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname]
 
-Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format.
+Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker
+format.
 
 options:
   -h, --help            show this help message and exit
@@ -368,11 +372,12 @@ options:
                         Output file name for the DNA sequence in VISTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene coordinates
+  -x                    Include predicted (not manually curacted) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly). The species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark)
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. As explained above in gbcoords, the **-all** function is 'replaced' with **-x**. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly). The species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark)
 
 # gbrecords usage
 ```

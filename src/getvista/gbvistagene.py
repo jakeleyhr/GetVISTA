@@ -147,7 +147,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
 
 
 # Function #3 - get list of genes and features in specified region
-def get_genes_in_region(accession, requested_start_position, requested_end_position):
+def get_genes_in_region(accession, requested_start_position, requested_end_position, X=False):
     # Retrieve GenBank record
     handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
     record = SeqIO.read(handle, "genbank")
@@ -209,21 +209,13 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
                     collect_features = True # Start collecting subsequent features from list
                     continue
             else:
-                print("Location coordinates in unexpected format")
+                print("Location coordinates in unexpected format") 
 
         if collect_features:
             if (
-                (feature.type == "ncRNA"
-                and "N" in feature.qualifiers.get("transcript_id", [""])[0] # N designates curated records as opposed to X (e.g. NR vs XR)
-                )
-                or (
-                    feature.type == "mRNA"
-                    and "N" in feature.qualifiers.get("transcript_id", [""])[0] # N designates curated records as opposed to X (e.g. NM vs XM)
-                )
-                or (
-                    feature.type == "CDS"
-                    and "N" in feature.qualifiers.get("protein_id", [""])[0] # N designates curated records as opposed to X (e.g. NP vs XP)
-                )  
+                (feature.type == "ncRNA" and (X or "N" in feature.qualifiers.get("transcript_id", [""])[0])) # N designates curated records as opposed to X (e.g. NM vs XM)
+                or (feature.type == "mRNA" and (X or "N" in feature.qualifiers.get("transcript_id", [""])[0]))
+                or (feature.type == "CDS" and (X or "N" in feature.qualifiers.get("protein_id", [""])[0]))
             ):
                 gene_value = feature.qualifiers.get("gene", [""])[0]  # extract the gene name associated with the feature
                 print(f"gene: {gene_value}")
@@ -352,7 +344,6 @@ def reformat(collected_features):
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
 
-
     # Create a mapping of unique ncRNA transcriptids to numbers
     transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
     
@@ -410,7 +401,7 @@ def pipmaker(paired_list, ncrna_list, start_position):
                 end = (max(mrna["end"] for mrna in mrnas) - start_position + 1)  # Add 1 to avoid 0 values
 
                 result_text.append(f"{strand_indicator} {start} {end} {gene_name}:{transcript_id}") # Assemble header line
-
+            
                 # Prepare to write feature lines
                 feature_lines = []
 
@@ -449,7 +440,7 @@ def pipmaker(paired_list, ncrna_list, start_position):
                 end = (max(ncrna["end"] for ncrna in ncrnas) - start_position + 1)  # Add 1 to avoid 0 values
 
                 result_text.append(f"{strand_indicator} {start} {end} {gene_name}:{transcript_id}") # Assemble header line
-
+                
                 # Prepare to write feature lines
                 feature_lines = []
 
@@ -663,6 +654,7 @@ def gbgene(
     end_adjust,
     fasta_output_file,
     coordinates_output_file,
+    X=False,
     nocut=None,
     apply_reverse_complement=False,
     autoname=False,
@@ -677,7 +669,7 @@ def gbgene(
     print("Finding features in region...")
 
     # Get a list of genes and their features included in the sequence region
-    genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position)
+    genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
 
     print("")
     print("Genes in the specified region:", genes)
@@ -773,6 +765,7 @@ def main():
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
+    parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curacted) transcripts in results")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
@@ -789,9 +782,11 @@ def main():
         args.end_adjust,
         args.fasta_output_file,
         args.coordinates_output_file,
+        args.X,
         args.nocut,
         args.rev,
-        args.autoname
+        args.autoname,
+
     )
 
 
