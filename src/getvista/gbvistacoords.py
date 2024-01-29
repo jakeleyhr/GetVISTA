@@ -628,7 +628,7 @@ def main():
     parser.add_argument("-c", "--gencoordinates", help="Genomic coordinates", required=True)
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene annotation coordinates")
-    parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curacted) transcripts in results")
+    parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curated) transcripts in results")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
