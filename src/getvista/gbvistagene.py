@@ -782,7 +782,7 @@ def main():
         args.end_adjust,
         args.fasta_output_file,
         args.coordinates_output_file,
-        args.X,
+        args.x,
         args.nocut,
         args.rev,
         args.autoname,
