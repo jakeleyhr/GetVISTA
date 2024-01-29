@@ -1,0 +1,9 @@
+argparse
+requests
+biopython
+
+[dev]
+pytest
+black
+setuptools
+twine
