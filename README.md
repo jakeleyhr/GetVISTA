@@ -25,7 +25,7 @@ conda create -n getvistaenv python=3.11
 ```
 conda activate getvistaenv
 ```
-* install the package:
+* Install the package:
 ```
 pip install getvista
 ```
@@ -323,9 +323,9 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 74291 74345 exon
 ```
 
-# gbvistacoords.py usage
+# gbcoords usage
 ```
-usage: gbvistacoords.py [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
+usage: gbcoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
 
 Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene feature coordinates in pipmaker format.
 
@@ -343,10 +343,10 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This script functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no -all option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000:600000).
-# gbvistagene.py usage
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no -all option, as all transcript are automatically included in the annotation file. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000:600000).
+# gbgene usage
 ```
-usage: gbvistagene.py [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
+usage: gbgene [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
                       [-anno COORDINATES_OUTPUT_FILE] [-nocut] [-rev] [-autoname]
 
 Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format.
@@ -371,12 +371,53 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This script functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly).
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly).
+
+# gbrecords usage
+```
+usage: gbrecord [-h] -s SPECIES -g GENE_SYMBOL
+
+Query the GenBank database with a species and gene name to obtain a list of different records containing the sequence
+to inform use of gbvistagene.py.
+
+options:
+  -h, --help            show this help message and exit
+  -s SPECIES, --species SPECIES
+                        Species name
+  -g GENE_SYMBOL, --gene_symbol GENE_SYMBOL
+                        Gene symbol
+```
+This command is intended to be used to see which genomic sequence records are available in GenBank for the given species and gene name. For example:
+```
+$ gbrecord -s human -g gdf5
+```
+gives this output in the terminal:
+```
+RECORD 0
+Assembly: Chromosome 20 Reference GRCh38.p14 Primary Assembly
+Accession: NC_000020
+Location: 35433346:35454748
+Length: 21403
+
+RECORD 1
+Assembly: RefSeqGene
+Accession: NG_008076
+Location: 21518:26399
+Length: 4882
+
+RECORD 2
+Assembly: Chromosome 20 Alternate T2T-CHM13v2.0
+Accession: NC_060944
+Location: 37154207:37175639
+Length: 21433
+```
+This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to the using the default (**-r 0**) CRCh38.p14 record. For example, the command "gbgene -s human -g gdf5 -autoname -r 0" takes ~220 seconds to complete, while the command "gbgene -s human -g gdf5 -autoname -r 1" takes only ~8 seconds.
 
 ## Notes
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 * For species with common names more than one word long (e.g. Alpine marmot or Spotted gar, as opposed to human or mouse), the full species name according to Ensembl must be used with underscores separating the words. For the Alpine marmot: marmota_marmota_marmota, and for the Spotted Gar: lepisosteus_oculatus
 * The requests to GenBank sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords, gbgene, or gbrecord, try running the command once or twice again, and the query should go through.
+* When running either gbcoords or gbgene on a large sequence record (e.g. a whole chromosome), it may take several tens of seconds to run, compared to the almost instant response from encoords and engene. This is because the gb scripts always search through the entire chromosomal record for gene features in the specified range, while the en scripts are able to narrow their search range to this range from the beginning.
 
 
 ## Bugs
