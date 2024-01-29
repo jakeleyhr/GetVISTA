@@ -342,7 +342,7 @@ options:
                         Output file name for the DNA sequence in VISTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene annotation coordinates
-  -x                    Include predicted (not manually curacted) transcripts in results
+  -x                    Include predicted (not manually curated) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
@@ -372,7 +372,7 @@ options:
                         Output file name for the DNA sequence in VISTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
                         Output file name for the gene coordinates
-  -x                    Include predicted (not manually curacted) transcripts in results
+  -x                    Include predicted (not manually curated) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
