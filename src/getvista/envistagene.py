@@ -101,6 +101,8 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust):
             print(f"Coordinates not found for gene: {gene_name}")
     else:
         print(f"Failed to retrieve gene information. Status code: {response.status_code}")
+        print("Check species and gene name are correct.")
+        sys.exit()
 
     # Adjust genomic coordinates according to gene and base adjust inputs
     genomic_coordinates = f"{gene_info['seq_region_name']}:{gene_start_coordinate-start_adjust}-{gene_end_coordinate+end_adjust}" 
