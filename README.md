@@ -8,6 +8,7 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 
 ## Author
 Jake Leyhr (@jakeleyhr)
+https://github.com/jakeleyhr/GetVISTA
 
 ## Dependencies
 * Python 3.11
