@@ -371,7 +371,7 @@ options:
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
 ```
-This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly).
+This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcript are automatically included in the annotation file. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly). The species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark)
 
 # gbrecords usage
 ```
