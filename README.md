@@ -5,6 +5,7 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
 * **gbvistagene.py**: query _GenBank_ database with species and _gene name_
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbvistagene.py)
+* **version_check.py**: check package version is up to date
 
 ## Author
 Jake Leyhr (@jakeleyhr)
@@ -14,6 +15,7 @@ https://github.com/jakeleyhr/GetVISTA
 * Python 3.11
 * requests
 * argparse
+* packaging
 * biopython
 
 ## Quick start guide
@@ -94,7 +96,7 @@ WASH7P-201
 Coordinates saved to annotationoutput.txt
 DNA sequence saved to fastaoutput.txt
 ```
-Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files. If, for example, only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
+Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files will be saved to the working directory. If, for example, only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
 ```
 $ encoords -s human -c 1:10000-20000 -anno annotationoutput.txt -autoname             
 Assembly name: GRCh38
@@ -109,7 +111,7 @@ WASH7P-201
 Coordinates saved to annotationoutput.txt
 DNA sequence saved to human_1_10000-20000.fasta.txt
 ```
-## encoords specific arguments:
+## encoords other arguments:
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
 $ encoords -s human -c 1:950000-1000000 -autoname
@@ -225,7 +227,7 @@ Note that the strand direction indicator has changed (> to <), and the 252bp 5' 
 ```
 $ engene -h
 usage: engene [-h] -s SPECIES -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
-              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
+              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname] [-fw]
 
 Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature
 coordinates in pipmaker format.
@@ -249,6 +251,7 @@ options:
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
+  -fw                   Automatically orient the gene in the forward strand by reverse complementing if needed
 ```
 ## engene inputs:
 The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to encoords described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and _gene name_ are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
@@ -323,6 +326,65 @@ In the output, note that the gene length is 4,345bp, but the total sequence leng
 73967 74073 exon
 74291 74345 exon
 ```
+Crucially, with engene, multiple species names can be included as arguments, for example:
+```
+engene -s human mouse chicken -g gdf5 -autoname -sa 50000 -ea 20000 
+```
+In this case, the script behaves just as previously described, just iterating through the different species names (separated by spaces). As a result, in this example the 6 output files for all 3 species will be saved in the working directory, and the output in the terminal looks like this:
+```
+Assembly name: GRCh38
+human gdf5 coordinates: 20:35433347-35454746
+human gdf5 is on reverse strand
+human gdf5 sequence length: 21400bp
+Specified coordinates: 20:35383347-35474746
+Specified sequence length: 91400bp
+
+Transcripts included in region:
+GDF5-AS1-201
+GDF5-201
+MIR1289-1-201
+CEP250-202
+UQCC1-205
+
+Coordinates saved to human_gdf5_20_35383347-35474746.annotation.txt
+DNA sequence saved to human_gdf5_20_35383347-35474746.fasta.txt
+
+Assembly name: GRCm39
+mouse gdf5 coordinates: 2:155782943-155787287
+mouse gdf5 is on reverse strand
+mouse gdf5 sequence length: 4345bp
+Specified coordinates: 2:155732943-155807287
+Specified sequence length: 74345bp
+
+Transcripts included in region:
+Uqcc1-204
+Gm15557-201
+Gdf5-201
+Cep250-204
+
+Coordinates saved to mouse_gdf5_2_155732943-155807287.annotation.txt
+DNA sequence saved to mouse_gdf5_2_155732943-155807287.fasta.txt
+
+Assembly name: bGalGal1.mat.broiler.GRCg7b
+chicken gdf5 coordinates: 20:1563813-1568758
+chicken gdf5 is on forward strand
+chicken gdf5 sequence length: 4946bp
+Specified coordinates: 20:1513813-1588758
+Specified sequence length: 74946bp
+
+Transcripts included in region:
+CEP250-203
+GDF5-201
+UQCC1-201
+ERGIC3-201
+ENSGALT00010061117
+ENSGALT00010061118
+ENSGALT00010061120
+
+Coordinates saved to chicken_gdf5_20_1513813-1588758.annotation.txt
+DNA sequence saved to chicken_gdf5_20_1513813-1588758.fasta.txt
+```
+A final argument that can be added to the engene command is **-fw**. When this is present, the coordinates and sequence outputs will always be such that the query gene is oriented in the forward direction. In other words, if the gene is on the reverse strand the outputs will be reverse complemented, but if it's already on the forward strand, then the outputs won't be reverse complemented. This is particularly useful in conjection with the input of multiple species names, as the same gene will be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
 
 # gbcoords usage
 ```
@@ -351,7 +413,7 @@ This command functions almost identically to encoords, except that it querys the
 # gbgene usage
 ```
 usage: gbgene [-h] -s SPECIES -g GENE_SYMBOL [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST]
-                      [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname]
+                      [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname] [-fw]
 
 Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker
 format.
@@ -359,9 +421,9 @@ format.
 options:
   -h, --help            show this help message and exit
   -s SPECIES, --species SPECIES
-                        Species name
-  -g GENE_SYMBOL, --gene_symbol GENE_SYMBOL
-                        Gene symbol
+                        Species name(s) (e.g., 'Homo_sapiens' or 'Human')
+  -g GENE_NAME, --gene_name GENE_NAME
+                        Gene name (e.g. BRCA1 or brca1)
   -r RECORD_ID, --record_id RECORD_ID
                         Record ID number (default=0, the top match)
   -sa START_ADJUST, --start_adjust START_ADJUST
@@ -376,6 +438,7 @@ options:
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
+  -fw                   Automatically orient the gene in the forward strand by reverse complementing if needed
 ```
 This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. As explained above in gbcoords, the **-all** function is 'replaced' with **-x**. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly). The species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark)
 
@@ -389,9 +452,9 @@ to inform use of gbvistagene.py.
 options:
   -h, --help            show this help message and exit
   -s SPECIES, --species SPECIES
-                        Species name
-  -g GENE_SYMBOL, --gene_symbol GENE_SYMBOL
-                        Gene symbol
+                        Species name (e.g., 'Homo_sapiens' or 'Human')
+  -g GENE_NAME, --gene_name GENE_NAME
+                        Gene name (e.g. BRCA1 or brca1)
 ```
 This command is intended to be used to see which genomic sequence records are available in GenBank for the given species and gene name. For example:
 ```
