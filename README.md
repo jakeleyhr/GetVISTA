@@ -4,7 +4,7 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **envistagene.py**: query _Ensembl_ database with species and _gene name_
 * **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
 * **gbvistagene.py**: query _GenBank_ database with species and _gene name_
-* **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbvistagene.py)
+* **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
 * **version_check.py**: check package version is up to date
 
 ## Author
@@ -166,7 +166,7 @@ $ encoords -s human -c 1:950000-1000000 -autoname -all
 31031 31048 UTR
 32066 32118 UTR
 ```
-Also by default, the script carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
+Also by default, the module carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region. For example, the mouse Cenpa gene is located on chromosome 5:30824121-30832175. If those coordinates are input, the resulting annotation file appears like this:
 ```
 $ encoords -s mouse -c 5:30824121-30832174 -autoname
 ```
@@ -254,7 +254,7 @@ options:
   -fw                   Automatically orient the gene in the forward strand by reverse complementing if needed
 ```
 ## engene inputs:
-The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to encoords described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and _gene name_ are input. For example, mouse and the gdf5 gene. This script outputs a detailed log of the gene information and the sequence region extracted:
+The output arguments, in addition to the **-all**, **-nocut**, **-rev** arguments are identical to encoords described above, but the inputs are quite different. Rather than defining a species and genomic region, a species and _gene name_ are input. For example, mouse and the gdf5 gene. This module outputs a detailed log of the gene information and the sequence region extracted:
 ```
 $ engene -s mouse -g gdf5 -autoname 
 Assembly name: GRCm39
@@ -330,7 +330,7 @@ Crucially, with engene, multiple species names can be included as arguments, for
 ```
 engene -s human mouse chicken -g gdf5 -autoname -sa 50000 -ea 20000 
 ```
-In this case, the script behaves just as previously described, just iterating through the different species names (separated by spaces). As a result, in this example the 6 output files for all 3 species will be saved in the working directory, and the output in the terminal looks like this:
+In this case, the module behaves just as previously described, just iterating through the different species names (separated by spaces). As a result, in this example the 6 output files for all 3 species will be saved in the working directory, and the output in the terminal looks like this:
 ```
 Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
@@ -444,10 +444,10 @@ This command functions almost identically to encoords, except that it querys the
 
 # gbrecords usage
 ```
-usage: gbrecord [-h] -s SPECIES -g GENE_SYMBOL
+usage: gbrecord [-h] -s SPECIES -g GENE_NAME
 
 Query the GenBank database with a species and gene name to obtain a list of different records containing the sequence
-to inform use of gbvistagene.py.
+to inform use of the gbgene module.
 
 options:
   -h, --help            show this help message and exit
