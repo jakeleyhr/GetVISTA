@@ -12,14 +12,15 @@ Description: Query the GenBank database with a species and gene name to obtain a
 # Import dependencies
 import argparse
 from Bio import Entrez
+from getvista.version_check import check_for_updates
 
 # Function #1 - get gene record
-def search_gene_info(species, gene_symbol):
+def search_gene_info(species, gene_name):
     # Set your email address
     Entrez.email = "dummy@gmail.com"
 
     # Build the query
-    query = f"{species}[ORGN] AND {gene_symbol}[Gene Name]" # Strict check on species name and gene name (also searches gene name synonyms)
+    query = f"{species}[ORGN] AND {gene_name}[Gene Name]" # Strict check on species name and gene name (also searches gene name synonyms)
 
     # Search Entrez Gene
     handle = Entrez.esearch(db="gene", term=query, retmode="xml")
@@ -38,9 +39,9 @@ def search_gene_info(species, gene_symbol):
     return None
 
 
-def gbrecord(species, gene_symbol):
+def gbrecord(species, gene_name):
     # Get target gene record from Entrez
-    gene_info = search_gene_info(species, gene_symbol)
+    gene_info = search_gene_info(species, gene_name)
     
     # Extract the relevant information
     if gene_info:
@@ -89,19 +90,20 @@ def main():
                                      to obtain a list of different records containing the sequence to inform \
                                      use of gbvistagene.py.")
 
-    # Add arguments for species and gene_symbol
-    parser.add_argument("-s", "--species", help="Species name", required=True)
-    parser.add_argument("-g", "--gene_symbol", help="Gene symbol", required=True)
+    # Add arguments for species and gene_name
+    parser.add_argument("-s", "--species", help="Species name (e.g., 'Homo_sapiens' or 'Human')", required=True)
+    parser.add_argument("-g", "--gene_name", help="Gene name (e.g. BRCA1 or brca1)", required=True)
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
     gbrecord(
         args.species, 
-        args.gene_symbol,
+        args.gene_name,
     )
 
 if __name__ == "__main__":
+    check_for_updates()
     main()
 
     

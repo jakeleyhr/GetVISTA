@@ -17,7 +17,7 @@ from collections import defaultdict
 import http.client
 from Bio import Entrez, SeqIO
 from Bio.Seq import Seq
-
+from getvista.version_check import check_for_updates
 
 http.client.HTTPConnection._http_vsn = 10
 http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
@@ -82,9 +82,11 @@ def search_gene_info(species, gene_name):
 
 
 # Function #2 - process the gene record and extract relevant information
-def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, gene_symbol):
+def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, gene_name):
     # Extract the relevant information
     if gene_info:
+        print('')
+        print(f'Query species: {species}')
         gene_ref_name = gene_info[0]["Entrezgene_gene"]["Gene-ref"]["Gene-ref_locus"]
         print(f"Query gene: {gene_ref_name}")
         try:
@@ -103,7 +105,11 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         except KeyError:
             print("Locus: None available")
         try:
-            strand = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]["Seq-loc_int"]["Seq-interval"]["Seq-interval_strand"]["Na-strand"].attributes['value']
+            strandsign = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]["Seq-loc_int"]["Seq-interval"]["Seq-interval_strand"]["Na-strand"].attributes['value']
+            if strandsign == 'plus':
+                strand = 'forward'
+            elif strandsign == 'minus':
+                strand = 'reverse'
             print(f"Strand: {strand}")
         except KeyError:
             print(f"Strand: None available")
@@ -141,7 +147,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         #explore_structure(gene_info[0]['Entrezgene_locus'])
 
     else:
-        print(f"No gene information found for {gene_symbol} in {species}. Check the names are correct.")
+        print(f"No gene information found for {gene_name} in {species}. Check the names are correct.")
         sys.exit()
 
     # Calculate region start and end based on the gene start and end coordinates +/- the user-provided adjustment values
@@ -149,7 +155,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
     requested_end_position = end + end_adjust
 
 
-    return accession_number, requested_start_position, requested_end_position
+    return accession_number, requested_start_position, requested_end_position, strand
 
 
 # Function #3 - get list of genes and features in specified region
@@ -627,9 +633,9 @@ def reverse_coordinates(coordinates, sequence_length):
 # Function C - download DNA sequence region in FASTA format (if -fasta argument included)
 def download_fasta(species, accession, start, end, fasta_output_file, apply_reverse_complement):
     print("Getting FASTA sequence...")
-    # Retrieve GenBank record
+    # Retrieve GenBank record 
     handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
-    record = SeqIO.read(handle, "genbank")
+    record = SeqIO.read(handle, "genbank") # takes a while
     handle.close()
 
     # Extract sequence from GenBank record based on coordinates
@@ -654,7 +660,7 @@ def download_fasta(species, accession, start, end, fasta_output_file, apply_reve
 
 def gbgene(
     species,
-    gene_symbol,
+    gene_name,
     record_id,
     start_adjust,
     end_adjust,
@@ -664,13 +670,14 @@ def gbgene(
     nocut=None,
     apply_reverse_complement=False,
     autoname=False,
+    fw=False
 ):
     # Get target gene record from Entrez
-    gene_info = search_gene_info(species, gene_symbol)
+    gene_info = search_gene_info(species, gene_name)
 
     # Extract key information about the sequence region to be processed
-    accession_number, requested_start_position, requested_end_position = process_gene_info(
-        gene_info, record_id, start_adjust, end_adjust, species, gene_symbol)
+    accession_number, requested_start_position, requested_end_position, strand = process_gene_info(
+        gene_info, record_id, start_adjust, end_adjust, species, gene_name)
 
     print("Finding features in region...")
 
@@ -680,6 +687,12 @@ def gbgene(
     print("")
     print("Genes in the specified region:", genes)
     print("")
+
+    # If -fw argument used and the gene is on the reverse strand, force reverse complement
+    if fw and strand == 'reverse':
+        print(f'{gene_name} is on the reverse strand, flipped automatically.')
+        print('')
+        apply_reverse_complement = True
 
     # If -anno argument is included (or -autoname), collect feature coordinates and write to .txt file:
     if coordinates_output_file or autoname:
@@ -712,14 +725,14 @@ def gbgene(
         if autoname:
             if not fasta_output_file:
                 if not apply_reverse_complement:
-                    fasta_output_file = f"{species}_{gene_symbol}_{start_position}-{end_position}.fasta.txt"
+                    fasta_output_file = f"{species}_{gene_name}_{start_position}-{end_position}.fasta.txt"
                 else:
-                    fasta_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}_revcomp.fasta.txt")
+                    fasta_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}_revcomp.fasta.txt")
             if not coordinates_output_file:
                 if not apply_reverse_complement:
-                    coordinates_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}.annotation.txt")
+                    coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}.annotation.txt")
                 else:
-                    coordinates_output_file = (f"{species}_{gene_symbol}_{start_position}-{end_position}_revcomp.annotation.txt")
+                    coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}_revcomp.annotation.txt")
 
         # Check if ".txt" is already at the end of the coordinates_output_file argument
         if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
@@ -763,9 +776,9 @@ def main():
     parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
                                      to obtain FASTA file and gene feature coordinates in pipmaker format.")
 
-    # Add arguments for species and gene_symbol
-    parser.add_argument("-s", "--species", help="Species name", required=True)
-    parser.add_argument("-g", "--gene_symbol", help="Gene symbol", required=True)
+    # Add arguments for species, gene_name, etc
+    parser.add_argument("-s", "--species", nargs='+', required=True, help="Species name(s) (e.g., 'Homo_sapiens' or 'Human')")
+    parser.add_argument("-g", "--gene_name", required=True, help="Gene name (e.g. BRCA1 or brca1)")
     parser.add_argument("-r", "--record_id", type=int, default=0, help="Record ID number (default=0, the top match)")
     parser.add_argument("-sa", "--start_adjust", type=int, default=0, help="Number to subtract from the start coordinate (default: 0)")
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
@@ -775,28 +788,31 @@ def main():
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
+    parser.add_argument("-fw", action="store_true", default=False, help="Automatically orient the gene in the forward strand by reverse complementing if needed")
 
     # Parse the command-line arguments
     args = parser.parse_args()
-
-    # Provide arguments to run
-    gbgene(
-        args.species,
-        args.gene_symbol,
-        args.record_id,
-        args.start_adjust,
-        args.end_adjust,
-        args.fasta_output_file,
-        args.coordinates_output_file,
-        args.x,
-        args.nocut,
-        args.rev,
-        args.autoname,
-
-    )
+    # Loop through multi-species inputs
+    for species in args.species:
+        # Provide arguments to run
+        gbgene(
+            species,
+            args.gene_name,
+            args.record_id,
+            args.start_adjust,
+            args.end_adjust,
+            args.fasta_output_file,
+            args.coordinates_output_file,
+            args.x,
+            args.nocut,
+            args.rev,
+            args.autoname,
+            args.fw
+        )
 
 
 if __name__ == "__main__":
+    check_for_updates()
     main()
 
 

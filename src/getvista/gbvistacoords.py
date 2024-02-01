@@ -16,6 +16,7 @@ from collections import defaultdict
 import http.client
 from Bio import Entrez, SeqIO
 from Bio.Seq import Seq
+from getvista.version_check import check_for_updates
 
 http.client.HTTPConnection._http_vsn = 10
 http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
@@ -495,7 +496,7 @@ def download_fasta(accession, start, end, fasta_output_file, apply_reverse_compl
     print("Getting FASTA sequence...")
     # Retrieve GenBank record
     handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
-    record = SeqIO.read(handle, "genbank")
+    record = SeqIO.read(handle, "genbank") # takes a while
     handle.close()
 
     # Extract sequence from GenBank record based on coordinates
@@ -650,5 +651,6 @@ def main():
 
     
 if __name__ == "__main__":
+    check_for_updates()
     main()
 

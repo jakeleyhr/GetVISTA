@@ -17,6 +17,7 @@ import requests
 import re
 from Bio import SeqIO
 from Bio.Seq import Seq
+from getvista.version_check import check_for_updates
 
 # Python 2/3 adaptability
 try:
@@ -418,6 +419,7 @@ def main():
 
     
 if __name__ == '__main__':
+    check_for_updates()
     main()
 
 

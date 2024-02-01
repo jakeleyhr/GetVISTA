@@ -17,6 +17,7 @@ import requests
 import re
 from Bio import SeqIO
 from Bio.Seq import Seq
+from getvista.version_check import check_for_updates
 
 # Python 2/3 adaptability
 try:
@@ -122,11 +123,19 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust):
     headers = {"Content-Type": "text/x-fasta"} 
     # Make the request to the Ensembl REST API with the headers (times out after 60 seconds)
     response = requests.get(url, headers=headers, timeout = 60) 
+
+    # Get strand information:
+    strandint = gene_info['strand']
+    if strandint == 1:
+        strand = 'forward'
+    elif strandint == -1:
+        strand = 'reverse'
     
     # Print details
+    print('')
     print(f"Assembly name: {gene_info['assembly_name']}")
     print(f"{species} {gene_name} coordinates: {gene_info['seq_region_name']}:{gene_start_coordinate}-{gene_end_coordinate}")
-    print(f"{species} {gene_name} is on {gene_info['strand']} strand")
+    print(f"{species} {gene_name} is on {strand} strand")
     print(f"{species} {gene_name} sequence length: {gene_end_coordinate-gene_start_coordinate+1}bp")
     print(f"Specified coordinates: {genomic_coordinates}")
 
@@ -138,7 +147,7 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust):
         print(f"Error: Unable to retrieve DNA sequence. Status code: {response.status_code}")
         print(f"Response content: {response.text}")
     
-    return genomic_coordinates, fasta_lines
+    return genomic_coordinates, fasta_lines, strand
 
 # Function 2 - get gene feature coordinates in pipmaker format
 def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts):
@@ -334,9 +343,9 @@ def reverse_coordinates(coordinates, sequence_length):
     return '\n'.join(reversed_coordinates)
 
 
-def engene(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False, autoname=False):
+def engene(species, gene_name, start_adjust, end_adjust, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False, autoname=False, fw = False):
     # Get genomic coordinates from gene record and adjustments
-    genomic_coordinates, fasta_lines = download_dna_sequence(species, gene_name, start_adjust, end_adjust)
+    genomic_coordinates, fasta_lines, strand = download_dna_sequence(species, gene_name, start_adjust, end_adjust)
 
     # Get genes info
     client = EnsemblRestClient()
@@ -344,6 +353,12 @@ def engene(species, gene_name, start_adjust, end_adjust, fasta_output_file=None,
 
     # Get coordinates and sequence length
     coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)
+    
+    # If -fw argument used and the gene is on the reverse strand, force reverse complement
+    if fw and strand == 'reverse':
+        print('')
+        print(f'{gene_name} is on the reverse strand, flipped automatically.')
+        apply_reverse_complement = True
 
     # Automatically generate output file names if -autoname is provided
     coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
@@ -434,9 +449,9 @@ def main():
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature coordinates in pipmaker format.")
     
-    # Add arguments for species, gene_symbol etc
-    parser.add_argument("-s", "--species",required=True, help="Species name (e.g., 'Homo_sapiens' or 'Human')")
-    parser.add_argument("-g", "--gene_name", required=True, help="Gene name")
+    # Add arguments for species, gene_name, etc
+    parser.add_argument("-s", "--species", nargs='+', required=True, help="Species name(s) (e.g., 'Homo_sapiens' or 'Human')")
+    parser.add_argument("-g", "--gene_name", required=True, help="Gene name (e.g. BRCA1 or brca1)")
     parser.add_argument("-sa", "--start_adjust", type=int, default=0, help="Number to subtract from the start coordinate (default: 0)")
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in FASTA format")
@@ -444,27 +459,33 @@ def main():
     parser.add_argument("-all", "--all_transcripts", action="store_true", default=False, help="Include all transcripts (instead of canonical transcript only)")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
-    parser.add_argument("-autoname", action="store_true",default=False, help="Automatically generate output file names based on species and gene name")
+    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on species and gene name")
+    parser.add_argument("-fw", action="store_true", default=False, help="Automatically orient the gene in the forward strand by reverse complementing if needed")
     
     # Parse the command-line arguments
     args = parser.parse_args()
 
-    # Pass arguments in the correct order
-    engene(
-        args.species, 
-        args.gene_name, 
-        args.start_adjust, 
-        args.end_adjust, 
-        args.fasta_output_file, 
-        args.coordinates_output_file, 
-        args.all_transcripts, 
-        args.nocut, 
-        args.rev,
-        args.autoname
-    )
+    # Loop through multi-species inputs
+    for species in args.species:
+        # Pass arguments in the correct order
+        engene(
+            species, 
+            args.gene_name, 
+            args.start_adjust, 
+            args.end_adjust, 
+            args.fasta_output_file, 
+            args.coordinates_output_file, 
+            args.all_transcripts, 
+            args.nocut, 
+            args.rev,
+            args.autoname,
+            args.fw,
+        )
+        
 
 
 if __name__ == '__main__':
+    check_for_updates()
     main()
 
 
