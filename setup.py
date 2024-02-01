@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.5.0"
+VERSION = "0.6.2"
 DESCRIPTION = "A python package to quickly get FASTA and pipmaker annotation files from Ensembl or GenBank for use in mVISTA alignment analysis."
 
 with open ("README.md", "r") as f:
@@ -20,6 +20,7 @@ setup(
     install_requires=[
         "argparse",
         "requests",
+        "packaging",
         "biopython",
     ],
     extras_require={
