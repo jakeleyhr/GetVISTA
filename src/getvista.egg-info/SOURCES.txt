@@ -1,0 +1,16 @@
+LICENSE
+README.md
+setup.py
+src/getvista/__init__.py
+src/getvista/envistacoords.py
+src/getvista/envistagene.py
+src/getvista/gbgenerecord.py
+src/getvista/gbvistacoords.py
+src/getvista/gbvistagene.py
+src/getvista/version_check.py
+src/getvista.egg-info/PKG-INFO
+src/getvista.egg-info/SOURCES.txt
+src/getvista.egg-info/dependency_links.txt
+src/getvista.egg-info/entry_points.txt
+src/getvista.egg-info/requires.txt
+src/getvista.egg-info/top_level.txt

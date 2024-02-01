@@ -88,7 +88,7 @@ def main():
 # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
                                      to obtain a list of different records containing the sequence to inform \
-                                     use of gbvistagene.py.")
+                                     use of the gbgene module.")
 
     # Add arguments for species and gene_name
     parser.add_argument("-s", "--species", help="Species name (e.g., 'Homo_sapiens' or 'Human')", required=True)
