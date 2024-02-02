@@ -620,6 +620,9 @@ def gbcoords(
 
 
 def main():
+    #Check for updates
+    check_for_updates()
+
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the GenBank database with an accession and range of coordinates \
                                      to obtain FASTA file and gene feature coordinates in pipmaker format.")
@@ -632,7 +635,7 @@ def main():
     parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curated) transcripts in results")
     parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
-    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
+    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and genomic coordinates")
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -651,6 +654,5 @@ def main():
 
     
 if __name__ == "__main__":
-    check_for_updates()
     main()
 

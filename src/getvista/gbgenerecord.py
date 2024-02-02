@@ -14,6 +14,7 @@ import argparse
 from Bio import Entrez
 from getvista.version_check import check_for_updates
 
+
 # Function #1 - get gene record
 def search_gene_info(species, gene_name):
     # Set your email address
@@ -84,8 +85,12 @@ def gbrecord(species, gene_name):
     else:
         print("No records found. Check species and gene names.")
 
+
 def main():
-# Create an ArgumentParser
+    #Check for updates
+    check_for_updates()
+
+    # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
                                      to obtain a list of different records containing the sequence to inform \
                                      use of the gbgene module.")
@@ -102,8 +107,8 @@ def main():
         args.gene_name,
     )
 
+
 if __name__ == "__main__":
-    check_for_updates()
     main()
 
     

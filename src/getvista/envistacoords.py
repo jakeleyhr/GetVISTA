@@ -177,7 +177,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                 if start > sequence_length and end > sequence_length:
                                     continue
                                 if start < 0:
-                                    start = 0
+                                    start = 1
                                 if end > sequence_length:
                                     end = sequence_length
 
@@ -213,7 +213,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                         if utr_start < 0 and utr_end < 0:
                                             continue
                                         if utr_start < 0:
-                                            utr_start = 0
+                                            utr_start = 1
 
                             coordinates.append((f"{start} {end} exon", start))
 
@@ -231,7 +231,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                     if utr_start > sequence_length and utr_end > sequence_length:
                                         continue
                                     if utr_start < 0 and utr_end > 0:
-                                        utr_start = 0
+                                        utr_start = 1
                                     if utr_start < sequence_length and utr_end > sequence_length:
                                         utr_end = sequence_length
 
@@ -298,9 +298,15 @@ def reverse_coordinates(coordinates, sequence_length):
 
 def encoords(species, genomic_coordinates, fasta_output_file=None, coordinates_output_file=None, all_transcripts=None, nocut=None, apply_reverse_complement=False, autoname=False):
     #Check if query sequence is >5Mb
-    coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
-    start = int(coordssplit.group(2))
-    end = int(coordssplit.group(3))
+    coordssplit = re.match(r"([^\.]+)?\.?(\d+):(\d+)-(\d+)", genomic_coordinates)
+    if coordssplit:
+        prefix = coordssplit.group(1)
+        chrom = f"{prefix}.{coordssplit.group(2)}" if prefix else coordssplit.group(2)
+        start = int(coordssplit.group(3))
+        end = int(coordssplit.group(4))
+    else:
+        print("Invalid genomic coordinates format.")
+
     if (end - start + 1) > 5000000:
         print("ERROR: Query sequence must be under 5Mb")
         sys.exit()
@@ -315,7 +321,6 @@ def encoords(species, genomic_coordinates, fasta_output_file=None, coordinates_o
     coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)
 
     # Automatically generate output file names if -autoname is provided
-    chrom = coordssplit.group(1)
     if autoname:
         if not fasta_output_file:
             if not apply_reverse_complement:
@@ -389,6 +394,9 @@ def encoords(species, genomic_coordinates, fasta_output_file=None, coordinates_o
 
 
 def main():
+    #Check for updates
+    check_for_updates()
+
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in FASTA format and gene feature coordinates in pipmaker format.")
     
@@ -400,7 +408,7 @@ def main():
     parser.add_argument("-all", "--all_transcripts", action="store_true", default=False, help="Include all transcripts (instead of canonical transcript only)")
     parser.add_argument("-nocut", action="store_true", default=False, help="Don't delete annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
-    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on species and gene name")
+    parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on species and genomic coordinates")
     
     # Parse the command-line arguments
     args = parser.parse_args() 
@@ -419,7 +427,6 @@ def main():
 
     
 if __name__ == '__main__':
-    check_for_updates()
     main()
 
 

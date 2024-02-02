@@ -106,12 +106,11 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust):
         sys.exit()
 
     # Adjust genomic coordinates according to gene and base adjust inputs
-    genomic_coordinates = f"{gene_info['seq_region_name']}:{gene_start_coordinate-start_adjust}-{gene_end_coordinate+end_adjust}" 
+    start = gene_start_coordinate-start_adjust
+    end = gene_end_coordinate+end_adjust
 
-    #Check if query sequence is >5Mb
-    coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
-    start = int(coordssplit.group(2))
-    end = int(coordssplit.group(3))
+    genomic_coordinates = f"{gene_info['seq_region_name']}:{start}-{end}" 
+
     if (end - start + 1) > 5000000:
         print("ERROR: Query sequence must be under 5Mb")
         sys.exit()
@@ -224,7 +223,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                 if start > sequence_length and end > sequence_length:
                                     continue
                                 if start < 0:
-                                    start = 0
+                                    start = 1
                                 if end > sequence_length:
                                     end = sequence_length
 
@@ -260,7 +259,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                         if utr_start < 0 and utr_end < 0:
                                             continue
                                         if utr_start < 0:
-                                            utr_start = 0
+                                            utr_start = 1
 
                             coordinates.append((f"{start} {end} exon", start))
 
@@ -278,7 +277,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                     if utr_start > sequence_length and utr_end > sequence_length:
                                         continue
                                     if utr_start < 0 and utr_end > 0:
-                                        utr_start = 0
+                                        utr_start = 1
                                     if utr_start < sequence_length and utr_end > sequence_length:
                                         utr_end = sequence_length
 
@@ -361,10 +360,16 @@ def engene(species, gene_name, start_adjust, end_adjust, fasta_output_file=None,
         apply_reverse_complement = True
 
     # Automatically generate output file names if -autoname is provided
-    coordssplit = re.match(r"(\d+):(\d+)-(\d+)", genomic_coordinates)
-    chrom = coordssplit.group(1)
-    start = coordssplit.group(2)
-    end = coordssplit.group(3)
+    coordssplit = re.match(r"([^\.]+)?\.?(\d+):(\d+)-(\d+)", genomic_coordinates)
+    if coordssplit:
+        prefix = coordssplit.group(1)
+        chrom = f"{prefix}.{coordssplit.group(2)}" if prefix else coordssplit.group(2)
+        start = coordssplit.group(3)
+        end = coordssplit.group(4)
+    else:
+        print("Invalid genomic coordinates format.")
+        
+
     if autoname and (start_adjust or end_adjust):
         if not fasta_output_file:
             if not apply_reverse_complement:
@@ -446,6 +451,9 @@ def engene(species, gene_name, start_adjust, end_adjust, fasta_output_file=None,
 
 
 def main():
+    #Check for updates
+    check_for_updates()
+    
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature coordinates in pipmaker format.")
     
@@ -484,7 +492,6 @@ def main():
         
 
 if __name__ == '__main__':
-    check_for_updates()
     main()
 
 

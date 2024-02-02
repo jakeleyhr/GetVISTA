@@ -772,6 +772,9 @@ def gbgene(
 
 
 def main():
+    #Check for updates
+    check_for_updates()
+
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
                                      to obtain FASTA file and gene feature coordinates in pipmaker format.")
@@ -812,7 +815,6 @@ def main():
 
 
 if __name__ == "__main__":
-    check_for_updates()
     main()
 
 
