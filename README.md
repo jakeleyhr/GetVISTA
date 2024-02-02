@@ -58,7 +58,7 @@ options:
                         Include all transcripts (instead of canonical transcript only)
   -nocut                Don't delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
-  -autoname             Automatically generate output file names based on species and gene name
+  -autoname             Automatically generate output file names based on species and genomic coordinates
 ```
 ## encoords inputs and outputs:
 The simplest inputs are the species name (**-s**) and region coordinates (**-c**), along with the -autoname flag:
@@ -407,7 +407,7 @@ options:
   -x                    Include predicted (not manually curated) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
-  -autoname             Automatically generate output file names based on accession and gene name
+  -autoname             Automatically generate output file names based on accession and genomic coordinates
 ```
 This command functions almost identically to encoords, except that it querys the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particualrly relevant when exploring new geomes with few manually curated genes/transcripts. The other key difference is that an accession code (e.g. NC_000020 for human chromosome 20) must be specified instead of a speces name, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 # gbgene usage
