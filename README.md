@@ -6,6 +6,8 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **gbvistagene.py**: query _GenBank_ database with species and _gene name_
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
 * **version_check.py**: check package version is up to date
+ 
+![getvista schematic](https://github.com/jakeleyhr/GetVISTA/assets/154226340/e3e9f11a-9553-4648-a212-31c8e3c38609)
 
 ## Author
 Jake Leyhr (@jakeleyhr)
