@@ -49,11 +49,12 @@ pip install getvista
 # engene usage
 ```
 $ engene -h
-usage: engene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
-                            [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname] [-fw] [-flank FLANK]
+usage: engene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] 
+                            [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all] 
+                            [-nocut] [-rev] [-autoname] [-fw] [-flank FLANK]
 
-Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and gene feature coordinates in
-pipmaker format.
+Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA format and
+gene feature coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -74,8 +75,10 @@ options:
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on species and gene name
-  -fw                   Automatically orient the gene in the forward strand by reverse complementing if needed
-  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them
+  -fw                   Automatically orient the gene in the forward strand by reverse complementing
+                        if needed
+  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex'
+                        to exclude them
 ```
 ## engene inputs:
 The simplest inputs are the species name (**-s**) and gene name (**-g**), along with the **-autoname** flag:
@@ -431,11 +434,13 @@ Finally, the last option for specifying the sequence region is **-flank**. Addin
 # gbgene usage
 ```
 $ gbgene -h
-usage: gbgene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-r RECORD_ID] [-sa START_ADJUST] [-ea END_ADJUST]
-                            [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname] [-fw]
+usage: gbgene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-r RECORD_ID] [-sa START_ADJUST] 
+                            [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
+                            [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname] [-fw]
                             [-flank FLANK]
 
-Query the GenBank database with a species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format.
+Query the GenBank database with a species and gene name to obtain FASTA file and gene feature
+coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -457,8 +462,10 @@ options:
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
   -autoname             Automatically generate output file names based on accession and gene name
-  -fw                   Automatically orient the gene in the forward strand by reverse complementing if needed
-  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them
+  -fw                   Automatically orient the gene in the forward strand by reverse complementing
+                        if needed
+  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex'
+                        to exclude them
 ```
 This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particualrly relevant when exploring new geomes with few manually curated genes/transcripts. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark).
 
@@ -475,11 +482,12 @@ This command functions almost identically to engene, except that it queries the 
 # encoords usage
 ```
 $ encoords -h
-usage: encoords [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-all]
-                              [-nocut] [-rev] [-autoname] [-flank FLANK]
+usage: encoords.py [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
+                              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] [-autoname]
+                              [-flank FLANK]
 
-Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in FASTA format and gene feature
-coordinates in pipmaker format.
+Query the Ensembl database with a species name and genomic coordinates to obtain DNA sequences in
+FASTA format and gene feature coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -495,8 +503,10 @@ options:
                         Include all transcripts (instead of canonical transcript only)
   -nocut                Don't delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
-  -autoname             Automatically generate output file names based on species and genomic coordinates
-  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them
+  -autoname             Automatically generate output file names based on species and genomic
+                        coordinates
+  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex'
+                        to exclude them
 ```
 The encoords modules works similarly to engene, but with some critical differences as the intention is to query a set of genomic coordinates instead of a gene name. Therefore, the **-g** argument is replaced by **-c**, and the coordinates are entered in the format 'chromosome:start-end' e.g:
 ```
@@ -521,11 +531,12 @@ As the coordinates are specified in place of the gene name, the **-sa**, **-ea**
 # gbcoords usage
 ```
 $ gbcoords -h
-usage: gbcoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] [-x]
-                              [-nocut] [-rev] [-autoname] [-flank FLANK]
+usage: genecoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
+                              [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] [-autoname]
+                              [-flank FLANK]
 
-Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene feature coordinates in pipmaker
-format.
+Query the GenBank database with an accession and range of coordinates to obtain FASTA file and gene
+feature coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -540,8 +551,10 @@ options:
   -x                    Include predicted (not manually curated) transcripts in results
   -nocut                Delete annotations not included in sequence
   -rev                  Reverse complement DNA sequence and coordinates
-  -autoname             Automatically generate output file names based on accession and genomic coordinates
-  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them
+  -autoname             Automatically generate output file names based on accession and genomic
+                        coordinates
+  -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex'
+                        to exclude them
 ```
 This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a speces name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 ```
