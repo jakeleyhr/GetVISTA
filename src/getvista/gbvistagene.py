@@ -10,17 +10,19 @@ Description: Query the GenBank database with a species and gene name \
 """
 
 # Import dependencies
+import os
 import re
 import argparse
 import sys
 from collections import defaultdict
-import http.client
+import configparser
+#import http.client
 from Bio import Entrez, SeqIO
 from Bio.Seq import Seq
-from getvista.version_check import check_for_updates
+#from getvista.version_check import check_for_updates
 
-http.client.HTTPConnection._http_vsn = 10
-http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
+#http.client.HTTPConnection._http_vsn = 10
+#http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
 
 # functions for debugging
 def record_directories(gene_info):
@@ -58,8 +60,24 @@ def explore_structure(data, indent=""):
 
 # Function #1 - get gene record
 def search_gene_info(species, gene_name):
-    # Set your email address
-    Entrez.email = "dummy@gmail.com"
+    # Set your email address if not already done
+    config = configparser.ConfigParser()
+    current_dir = os.path.dirname(__file__) # Get the directory path of the current script
+    config_file_path = os.path.join(current_dir, 'config.ini') # Specify the path to config.ini relative to the script's directory
+    if os.path.exists(config_file_path): # Check if the config file exists
+        config.read(config_file_path)
+    else:
+        print("Config file not found:", config_file_path)
+
+    Entrez.email = config.get('User', 'email')
+
+    if not Entrez.email:
+        Entrez.email = input(f"NCBI's Entrez system requests an email address to be associated with queries. \nPlease enter your email address: ")
+        config.set('User', 'email', Entrez.email)
+        # Write the config.ini file to the same directory as the script
+        with open(config_file_path, 'w') as configfile:
+            config.write(configfile)
+        print(f"Email address set: '{Entrez.email}'. This will be used for all future queries. \nYou can change the saved email address using 'gbemail -update'")
 
     # Build the query - strict check on species name and gene name (also searches gene name synonyms)
     query = f"{species}[ORGN] AND {gene_name}[Gene Name] OR {gene_name}[Accession]"
@@ -85,8 +103,7 @@ def search_gene_info(species, gene_name):
 def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, gene_name):
     # Extract the relevant information
     if gene_info:
-        print('')
-        print(f'Query species: {species}')
+        print(f'\nQuery species: {species}')
         gene_ref_name = gene_info[0]["Entrezgene_gene"]["Gene-ref"]["Gene-ref_locus"]
         print(f"Query gene: {gene_ref_name}")
         try:
@@ -112,7 +129,10 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
                 strand = 'reverse'
             print(f"Strand: {strand}")
         except KeyError:
-            print(f"Strand: None available")
+            print("Strand: None available")
+        except IndexError:
+            print("Record ID not found, try a different value.")
+            sys.exit()
 
         try:
             assembly = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_label"]
@@ -127,15 +147,13 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
             ) + 1)  # "Gene-commentary_seqs" gives merged gene seqeunce, "Gene-commentary-products" gives transcripts
             length = end - start + 1
 
-            print("")
-            print(f"Using record {record_id}:")
+            print(f"\nUsing record {record_id}:")
             print(f"Assembly: {assembly}")
             print(f"Accession: {accession_number}")
             print(f"Location: {start}:{end}")
-            print(f"Length: {length}bp")
-            print("")
+            print(f"Length: {length}bp\n")
         except IndexError:
-            print(f"Record_ID #{record_id} not found. Try a different value")
+            print(f"ERROR: Record_ID #{record_id} not found. Try a different value")
             sys.exit()  # Exit the script
 
         # For debugging - explore the file format:
@@ -147,7 +165,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         #explore_structure(gene_info[0]['Entrezgene_locus'])
 
     else:
-        print(f"No gene information found for {gene_name} in {species}. Check the names are correct.")
+        print(f"ERROR: No gene information found for {gene_name} in {species}. Check the names are correct.")
         sys.exit()
 
     # Calculate region start and end based on the gene start and end coordinates +/- the user-provided adjustment values
@@ -178,10 +196,10 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
     end = requested_end_position
     if requested_start_position < source_start:
         start = source_start
-        print("Input start coordinate is out of bounds, trimming to closest value:")
+        print(f"WARNING: {requested_start_position} is not a valid start coordinate, changing to {source_start}.")
     if requested_end_position > source_end:
         end = source_end
-        print("Input end coordinate is out of bounds, trimming to closest value:")
+        print(f"WARNING: Input end coordinate {requested_end_position} is out of bounds, trimming to closest value: {source_end}")
 
     # Calculate total user-specified sequence length in bp (need to add 1)
     sequence_length = end - start + 1
@@ -190,12 +208,9 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
     end_position = end
 
     print(f"Specified region: {accession}:{start}-{end}")
-    print(f"Specified region length: {sequence_length}bp")
-    print("")
-    
-    print("Finding features in region...")
-    print("")
+    print(f"Specified region length: {sequence_length}bp\n")
 
+    print("Finding features in region...\n")
 
     # Prepare to collect genes and features
     genes_in_region, collected_features = [], []
@@ -537,45 +552,50 @@ def cut(coordinates, sequence_length):
     for line in coordinates:
         if line.startswith(">"):
             header_values = list(map(int, line.split()[1:3]))
-            if header_values[0] < 1:
-                line_parts = line.split()
-                line_parts[3] = f"{line_parts[3]}:cut5':{1 - header_values[0]}bp"  # Update name with cut flag
-                header_values[0] = 1  # Set to 1 if less than 1
-                line = " ".join(map(str, line_parts))
-            if header_values[1] > sequence_length:
-                line_parts = line.split()
-                line_parts[3] = f"{line_parts[3]}:cut3':{header_values[1]-sequence_length}bp"  # Update name with cut flag
-                header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
-                line = " ".join(map(str, line_parts))
-            processed_line = f"> {header_values[0]} {header_values[1]} {line.split()[3]}"
-            processed_coordinates.append(processed_line)
-        elif line.startswith("<"):
-            header_values = list(map(int, line.split()[1:3]))
-            if header_values[0] < 1:
-                line_parts = line.split()
-                line_parts[3] = f"{line_parts[3]}:cut5':{1 - header_values[0]}bp"  # Update name with cut flag
-                header_values[0] = 1  # Set to 1 if less than 1
-                line = " ".join(map(str, line_parts))
-            if header_values[1] > sequence_length:
-                line_parts = line.split()
-                line_parts[3] = f"{line_parts[3]}:cut3':{header_values[1]-sequence_length}bp"  # Update name with cut flag
-                header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
-                line = " ".join(map(str, line_parts))
-            processed_line = (f"< {header_values[0]} {header_values[1]} {line.split()[3]}")
-            processed_coordinates.append(processed_line)
-        else:
-            header_values = list(map(int, line.split()[0:2]))
-            header_values[0] = max(1, header_values[0])  # Set to 1 if less than 1
-            header_values[0] = min(sequence_length, header_values[0])  # Set to sequence_length if greater than sequence_length
-            header_values[1] = max(1, header_values[1])  # Set to 1 if less than 1
-            header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
-            processed_line = f"{header_values[0]} {header_values[1]} {line.split()[2]}"
-            if (header_values[0] == 1 and header_values[1] == 1) or (
-                header_values[0] == sequence_length
-                and header_values[1] == sequence_length
-            ):
+            if header_values[0] < 1 and header_values[1] < 1:
                 continue
             else:
+                if header_values[0] < 1:
+                    line_parts = line.split()
+                    line_parts[3] = f"{line_parts[3]}:cut5':{1 - header_values[0]}bp"  # Update name with cut flag
+                    header_values[0] = 1  # Set to 1 if less than 1
+                    line = " ".join(map(str, line_parts))
+                if header_values[1] > sequence_length:
+                    line_parts = line.split()
+                    line_parts[3] = f"{line_parts[3]}:cut3':{header_values[1]-sequence_length}bp"  # Update name with cut flag
+                    header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
+                    line = " ".join(map(str, line_parts))
+                if header_values[1] < 1:
+                    header_values[1] = max(1, header_values[1])  # Set to 1 if less than 1
+                processed_line = f"> {header_values[0]} {header_values[1]} {line.split()[3]}"
+                processed_coordinates.append(processed_line)
+        elif line.startswith("<"):
+            header_values = list(map(int, line.split()[1:3]))
+            if header_values[0] < 1 and header_values[1] < 1:
+                continue
+            else:
+                if header_values[0] < 1:
+                    line_parts = line.split()
+                    line_parts[3] = f"{line_parts[3]}:cut5':{1 - header_values[0]}bp"  # Update name with cut flag
+                    header_values[0] = 1  # Set to 1 if less than 1
+                    line = " ".join(map(str, line_parts))
+                if header_values[1] > sequence_length:
+                    line_parts = line.split()
+                    line_parts[3] = f"{line_parts[3]}:cut3':{header_values[1]-sequence_length}bp"  # Update name with cut flag
+                    header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
+                    line = " ".join(map(str, line_parts))
+                processed_line = (f"< {header_values[0]} {header_values[1]} {line.split()[3]}")
+                processed_coordinates.append(processed_line)
+        else:
+            header_values = list(map(int, line.split()[0:2]))
+            if (header_values[0] < 1 and header_values[1] < 1) or (header_values[0] > sequence_length and header_values[1] > sequence_length):
+                continue
+            else:
+                header_values[0] = max(1, header_values[0])  # Set to 1 if less than 1
+                header_values[0] = min(sequence_length, header_values[0])  # Set to sequence_length if greater than sequence_length
+                header_values[1] = max(1, header_values[1])  # Set to 1 if less than 1
+                header_values[1] = min(sequence_length, header_values[1])  # Set to sequence_length if greater than sequence_length
+                processed_line = f"{header_values[0]} {header_values[1]} {line.split()[2]}"
                 processed_coordinates.append(processed_line)
 
     return processed_coordinates
@@ -658,20 +678,108 @@ def download_fasta(species, accession, start, end, fasta_output_file, apply_reve
     SeqIO.write(fasta_record, f"{fasta_output_file}", "fasta")
 
 
+#Function D - use flanking genes
+def useflanks(collected_features, start_position, end_position, flank):
+
+    input_region_start = start_position
+    input_region_end = end_position
+    sequence_length = (input_region_end - input_region_start) + 1
+
+    print(f"Specified sequence length: {sequence_length}bp\n")
+
+    gene_locations = {}
+
+    # Populate gene_locations dictionary
+    for feature in collected_features:
+        gene_name = feature['gene']
+        locations = [int(x) for loc_range in feature['location'].split(',') for x in loc_range.split(':')]
+        min_location = min(locations)
+        max_location = max(locations)
+        
+        if gene_name in gene_locations:
+            gene_locations[gene_name].append((min_location, max_location))
+        else:
+            gene_locations[gene_name] = [(min_location, max_location)]
+
+    # Function to get minimum location for a gene name
+    def get_min_location(gene_name):
+        if gene_name in gene_locations:
+            min_locations = [loc[0] for loc in gene_locations[gene_name]]
+            return min(min_locations)
+        else:
+            return None
+        
+    def get_max_location(gene_name):
+        if gene_name in gene_locations:
+            max_locations = [loc[1] for loc in gene_locations[gene_name]]
+            return max(max_locations)
+        else:
+            return None
+      
+    # Prompt the user for input
+    gene_name_input1 = input("Please enter the first gene name (case sensitive): ")
+    # Check if the transcript name is present in the dictionary
+    if gene_name_input1 in gene_locations:
+        start_coordinate = get_min_location(gene_name_input1)
+        if flank == "in":
+            start_coordinate = get_min_location(gene_name_input1)
+            print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}")
+        if flank == "ex":
+            start_coordinate = get_max_location(gene_name_input1)+1
+            print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}")
+    else:
+        choice = input("Invalid input. Do you want to try again? (yes/no): ")
+        if choice.lower() != "yes":
+            print("Terminating the script.")
+            sys.exit() # Terminate the script if the user chooses not to try again
+    
+    # Prompt the user for input
+    gene_name_input2 = input("Please enter the second gene name (case sensitive): ")
+    # Check if the transcript name is present in the dictionary
+    if gene_name_input2 in gene_locations:
+        end_coordinate = get_max_location(gene_name_input2)
+        if flank == "in":
+            end_coordinate = get_max_location(gene_name_input2)
+            print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}")
+        if flank == "ex":
+            end_coordinate = get_min_location(gene_name_input2)-1
+            print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}")
+    else:
+        choice = input("Invalid input. Do you want to try again? (yes/no): ")
+        if choice.lower() != "yes":
+            print("Terminating the script.")
+            sys.exit() # Terminate the script if the user chooses not to try again
+
+    new_start = start_coordinate
+    new_end = end_coordinate
+
+    if new_start > new_end:
+        print("ERROR: start coordinate cannot be larger than end coordinate")
+        sys.exit()
+
+    return new_start, new_end, gene_name_input1, gene_name_input2
+
+
 def gbgene(
     species,
     gene_name,
     record_id,
     start_adjust,
-    end_adjust,
+    end_adjust, 
     fasta_output_file,
     coordinates_output_file,
     X=False,
     nocut=None,
     apply_reverse_complement=False,
     autoname=False,
-    fw=False
+    fw=False,
+    flank=None
 ):
+    # Terminate script if flank argument supplied but not 'in' or 'ex'
+    if flank not in ["in", "ex", None]:
+        print("ERROR: invalid flank argument; must be 'in' or 'ex'")
+        sys.exit()
+
     # Get target gene record from Entrez
     gene_info = search_gene_info(species, gene_name)
 
@@ -684,14 +792,20 @@ def gbgene(
     # Get a list of genes and their features included in the sequence region
     genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
 
-    print("")
-    print("Genes in the specified region:", genes)
-    print("")
+    # If no genes in genes list, terminate script
+    if len(genes) == 0:
+        print("No genes found in region")
+        sys.exit()
+
+    print(f'\nGenes in the specified region: {genes}\n')
+
+    if flank:  
+        new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank)
+        genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, new_start, new_end, X)
 
     # If -fw argument used and the gene is on the reverse strand, force reverse complement
     if fw and strand == 'reverse':
-        print(f'{gene_name} is on the reverse strand, flipped automatically.')
-        print('')
+        print(f'{gene_name} is on the reverse strand, flipped automatically.\n')
         apply_reverse_complement = True
 
     # If -anno argument is included (or -autoname), collect feature coordinates and write to .txt file:
@@ -721,8 +835,8 @@ def gbgene(
             else:
                 formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]}\n"
 
-        # Automatically generate output file names if -autoname is provided
-        if autoname:
+        # Automatically generate output file names if -autoname is provided 
+        if autoname and not flank:
             if not fasta_output_file:
                 if not apply_reverse_complement:
                     fasta_output_file = f"{species}_{gene_name}_{start_position}-{end_position}.fasta.txt"
@@ -733,6 +847,28 @@ def gbgene(
                     coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}.annotation.txt")
                 else:
                     coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}_revcomp.annotation.txt")
+        if autoname and (flank == "in"):
+            if not fasta_output_file:
+                if not apply_reverse_complement:
+                    fasta_output_file = f"{species}_{gene_name}__{fgene1}-{fgene2}.fasta.txt"
+                else:
+                    fasta_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}_revcomp.fasta.txt")
+            if not coordinates_output_file:
+                if not apply_reverse_complement:
+                    coordinates_output_file = (f"{species}_{gene_name}__{fgene1}-{fgene2}.annotation.txt")
+                else:
+                    coordinates_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}_revcomp.annotation.txt")    
+        if autoname and (flank == "ex"):
+            if not fasta_output_file:
+                if not apply_reverse_complement:
+                    fasta_output_file = f"{species}_{gene_name}__{fgene1}-{fgene2}.ex.fasta.txt"
+                else:
+                    fasta_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}.ex_revcomp.fasta.txt")
+            if not coordinates_output_file:
+                if not apply_reverse_complement:
+                    coordinates_output_file = (f"{species}_{gene_name}__{fgene1}-{fgene2}.ex.annotation.txt")
+                else:
+                    coordinates_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}.ex_revcomp.annotation.txt") 
 
         # Check if ".txt" is already at the end of the coordinates_output_file argument
         if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
@@ -746,14 +882,12 @@ def gbgene(
         if not apply_reverse_complement:
             with open(coordinates_output_file, 'w') as coordinates_file:
                 coordinates_file.write(formatted_coordinates)
-            print(f"Coordinates saved to {coordinates_output_file}") 
-            print("")
+            print(f"Coordinates saved to {coordinates_output_file}\n") 
         else:
             reversed_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
             with open(coordinates_output_file, 'w') as coordinates_file:
                 coordinates_file.write(reversed_coordinates)
-            print(f"Reversed feature coordinates saved to {coordinates_output_file}")
-            print("")
+            print(f"Reversed feature coordinates saved to {coordinates_output_file}\n")
                 
     else:
         print("No pipmaker output file specified.")
@@ -773,7 +907,7 @@ def gbgene(
 
 def main():
     #Check for updates
-    check_for_updates()
+    #check_for_updates()
 
     # Create an ArgumentParser
     parser = argparse.ArgumentParser(description="Query the GenBank database with a species and gene name \
@@ -788,10 +922,11 @@ def main():
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curated) transcripts in results")
-    parser.add_argument("-nocut", action="store_true", default=False, help="Delete annotations not included in sequence")
+    parser.add_argument("-nocut", action="store_true", default=False, help="Keep feature annotations not included in sequence")
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and gene name")
     parser.add_argument("-fw", action="store_true", default=False, help="Automatically orient the gene in the forward strand by reverse complementing if needed")
+    parser.add_argument("-flank", default=None, help="Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them")
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -810,7 +945,8 @@ def main():
             args.nocut,
             args.rev,
             args.autoname,
-            args.fw
+            args.fw,
+            args.flank,
         )
 
 

@@ -10,15 +10,33 @@ Description: Query the GenBank database with a species and gene name to obtain a
 """
 
 # Import dependencies
+import os
 import argparse
+import configparser
 from Bio import Entrez
 from getvista.version_check import check_for_updates
 
 
 # Function #1 - get gene record
 def search_gene_info(species, gene_name):
-    # Set your email address
-    Entrez.email = "dummy@gmail.com"
+    # Set your email address if not already done
+    config = configparser.ConfigParser()
+    current_dir = os.path.dirname(__file__) # Get the directory path of the current script
+    config_file_path = os.path.join(current_dir, 'config.ini') # Specify the path to config.ini relative to the script's directory
+    if os.path.exists(config_file_path): # Check if the config file exists
+        config.read(config_file_path)
+    else:
+        print("Config file not found:", config_file_path)
+
+    Entrez.email = config.get('User', 'email')
+
+    if not Entrez.email:
+        Entrez.email = input(f"NCBI's Entrez system requests an email address to be associated with queries. \nPlease enter your email address: ")
+        config.set('User', 'email', Entrez.email)
+        # Write the config.ini file to the same directory as the script
+        with open(config_file_path, 'w') as configfile:
+            config.write(configfile)
+        print(f"Email address set: '{Entrez.email}'. This will be used for all future queries. \nYou can change the saved email address using 'gbemail -update'")
 
     # Build the query
     query = f"{species}[ORGN] AND {gene_name}[Gene Name]" # Strict check on species name and gene name (also searches gene name synonyms)
