@@ -5,6 +5,7 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **envistacoords.py**: query _Ensembl_ database with species and _genomic coordinates_
 * **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
+* **emailaddress.py**: check and update the email address used to make GenBank Entrez queries
 * **version_check.py**: check package version is up to date
  
 ![getvista schematic](https://github.com/jakeleyhr/GetVISTA/assets/154226340/e3e9f11a-9553-4648-a212-31c8e3c38609)
@@ -16,9 +17,9 @@ https://github.com/jakeleyhr/GetVISTA
 ## Dependencies
 * Python 3.11
 * requests
-* argparse
 * packaging
 * biopython
+* configparser
 
 ## Quick start guide
 * Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
@@ -616,10 +617,22 @@ This shows that there are 3 different genomic records readily available in GenBa
 
 
 
+&nbsp;
+&nbsp;
+# gbemail usage
+```
+$ gbemail -h
+usage: gbemail [-h] [-check] [-update]
 
+Manage email address for GenBank Entrez queries. Only stored locally and sent with 
+queries to NCBI, nowhere else.
 
-
-
+options:
+  -h, --help  show this help message and exit
+  -check      Check the current saved email address
+  -update     Update the email address
+```
+The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompted for an email address as NCBI requires this to send queries via Entrez. After you enter this email address the first time, you won't need to enter it again, as it saved localled to a config file in the package directory. It is never shared with anyone except NCBI when you send queries via Entrez. This accessory module provides the option to check or update (change) this email address if you decide to use a different address at a later date. Any dummy email address or word (e.g. 'dummy@gmail.com' or 'dummmy') can also be used if preferred. 
 
 
 &nbsp;
