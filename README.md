@@ -52,7 +52,7 @@ pip install getvista
 $ engene -h
 usage: engene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-sa START_ADJUST] [-ea END_ADJUST] 
                             [-fasta FASTA_OUTPUT_FILE] [-anno COORDINATES_OUTPUT_FILE] 
-                            [-all] [-nocut] [-rev] [-autoname] [-fw] [-flank FLANK]
+                            [-all] [-nocut] [-rev] [-autoname] [-fw] [-flank FLANK] [-vis]
 
 Query the Ensembl database with a species and gene name to obtain DNA sequences in FASTA 
 format and gene feature coordinates in pipmaker format.
@@ -81,6 +81,7 @@ options:
                         complementing if needed
   -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking 
                         genes, 'ex' to exclude them
+  -vis                  Display graphical representation of the sequence in the terminal
 ```
 ## engene inputs:
 The simplest inputs are the species name (**-s**) and gene name (**-g**), along with the **-autoname** flag:
@@ -230,7 +231,7 @@ In the output, note that the gene length is 21,400bp, but the total sequence len
 Also by default, the module carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region and only features inside the region are included. In this case, the specified coordinate range cut off 80,769bp from the UQCC1 gene-205 transcript, and 44,534bp has been cut off the CEP250-205, and this information about the truncation has been added to the transcript names to make it clear to the user that the selection has cut off part of these transcripts.
 This option can be turned off by including the **-nocut** flag, such that cut-off parts of the transcripts are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
-engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 -nocut
+$ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 -nocut
 ```
 produces the following text in the annotation file:
 ```
@@ -302,6 +303,39 @@ produces the following text in the annotation file:
 ```
 Bear in mind that this file won't work as an input to mVISTA, because the annotation coordinates have to match the fasta file and having negative coordinates or coordinates greater than the total sequence length will result in an error. However, this option can be useful to see the number of features that are cut off in the default output.
 
+On the subject of seeing, when the **-vis** flag is included in the commmand, a simple graphical representation of the specified sequence region is printed in the terminal:
+```
+$ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 -vis
+
+Assembly name: GRCh38
+human gdf5 coordinates: 20:35433347-35454746
+human gdf5 is on reverse strand
+human gdf5 sequence length: 21400bp
+Specified coordinates: 20:35383347-35474746
+Specified sequence length: 91400bp
+
+Transcripts included in region:
+UQCC1-205
+GDF5-AS1-201
+GDF5-201
+MIR1289-1-201
+CEP250-202
+
+Graphical representation of specified sequence region:
+<UQCC1-205-cut5':80769bp<========================================================
+=================================================================================
+=================================================================================
+=================================================================================
+=>GDF5-AS1-201#GDF5-201<=========================================================
+=================================================================================
+=================================================================================
+====<MIR1289-1-201<=====================>CEP250-202-cut3':44534bp>
+
+Coordinates saved to human_gdf5_20.35383347-35474746.annotation.txt
+DNA sequence saved to human_gdf5_20.35383347-35474746.fasta.txt
+```
+Here, the transcripts in the region are printed with their strand directions indicated by the flanking '>' or '<' symbols, and the '=' symbols represent intergenic sequences. Partially overlapping transcripts, such as GDF5-AS-1 and GDF5-201, are shown by the presence of the '#' symbol between two two names. The length of the displayed intergenic sequences are approximately accurate, while genes are only represented by their printed names, regardless of size.
+
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
 < 1 4882 GDF5-201
@@ -310,7 +344,7 @@ By default, only the exon and UTR coordinates of the canonical gene transcripts 
 3952 4582 exon
 4583 4882 UTR
 ```
-However, by including the **-all** flag, all transcripts are included, including the non-canonical ones, e.g:
+However, by including the **-all** flag in the command, all transcripts are included, including the non-canonical ones, e.g:
 ```
 < 1 4882 GDF5-201
 1 562 UTR
@@ -439,10 +473,10 @@ $ gbgene -h
 usage: gbgene [-h] -s SPECIES [SPECIES ...] -g GENE_NAME [-r RECORD_ID] [-sa START_ADJUST] 
                             [-ea END_ADJUST] [-fasta FASTA_OUTPUT_FILE]
                             [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] 
-                            [-autoname] [-fw] [-flank FLANK]
+                            [-autoname] [-fw] [-flank FLANK] [-vis]
 
 Query the GenBank database with a species and gene name to obtain FASTA file and gene 
-featurecoordinates in pipmaker format.
+feature coordinates in pipmaker format.
 
 options:
   -h, --help            show this help message and exit
@@ -470,6 +504,7 @@ options:
                         complementing if needed
   -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking 
                         genes, 'ex' to exclude them
+  -vis                  Display graphical representation of the sequence in the terminal
 ```
 This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particualrly relevant when exploring new geomes with few manually curated genes/transcripts. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark).
 
@@ -488,7 +523,7 @@ This command functions almost identically to engene, except that it queries the 
 $ encoords -h
 usage: encoords.py [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
                               [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] 
-                              [-rev] [-autoname] [-flank FLANK]
+                              [-rev] [-autoname] [-flank FLANK] [-vis]
 
 Query the Ensembl database with a species name and genomic coordinates to obtain DNA 
 sequences in FASTA format and gene feature coordinates in pipmaker format.
@@ -511,6 +546,7 @@ options:
                         genomic coordinates
   -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking 
                         genes, 'ex' to exclude them
+  -vis                  Display graphical representation of the sequence in the terminal
 ```
 The encoords modules works similarly to engene, but with some critical differences as the intention is to query a set of genomic coordinates instead of a gene name. Therefore, the **-g** argument is replaced by **-c**, and the coordinates are entered in the format 'chromosome:start-end' e.g:
 ```
@@ -537,7 +573,7 @@ As the coordinates are specified in place of the gene name, the **-sa**, **-ea**
 $ gbcoords -h
 usage: genecoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
                               [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] 
-                              [-autoname] [-flank FLANK]
+                              [-autoname] [-flank FLANK] [-vis]
 
 Query the GenBank database with an accession and range of coordinates to obtain FASTA file 
 and gene feature coordinates in pipmaker format.
@@ -559,6 +595,7 @@ options:
                         genomic coordinates
   -flank FLANK          Select 2 genes to specify new range. 'in' to include the flanking 
                         genes, 'ex' to exclude them
+  -vis                  Display graphical representation of the sequence in the terminal
 ```
 This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a speces name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 ```
@@ -613,7 +650,15 @@ Accession: NC_060944
 Location: 37154207:37175639
 Length: 21433
 ```
-This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to the using the default (**-r 0**) GRCh38.p14 record. For example, the command "gbgene -s human -g gdf5 -autoname -r 0" takes ~66 seconds to complete, while the command "gbgene -s human -g gdf5 -autoname -r 1" takes only ~7 seconds.
+This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to the using the default (**-r 0**) GRCh38.p14 record. For example, the command 
+```
+$ gbgene -s human -g gdf5 -autoname -r 0
+```
+takes ~68 seconds to complete, while the command:
+```
+$ gbgene -s human -g gdf5 -autoname -r 1
+``` 
+takes only ~8 seconds.
 
 
 
@@ -632,7 +677,7 @@ options:
   -check      Check the current saved email address
   -update     Update the email address
 ```
-The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompted for an email address as NCBI requires this to send queries via Entrez. After you enter this email address the first time, you won't need to enter it again, as it saved localled to a config file in the package directory. It is never shared with anyone except NCBI when you send queries via Entrez. This accessory module provides the option to check or update (change) this email address if you decide to use a different address at a later date. Any dummy email address or word (e.g. 'dummy@gmail.com' or 'dummmy') can also be used if preferred. 
+The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompted for an email address as NCBI requires this to send queries via Entrez. After you enter this email address the first time, you won't need to enter it again, as it saved localled to a config file in the package directory. It is never shared with anyone except NCBI when you send queries via Entrez. This accessory module provides the option to check or update (change) this email address if you decide to use a different address at a later date. Any dummy email address or word (e.g. 'dummy@gmail.com' or 'dummy') can also be used if preferred. 
 
 
 &nbsp;
@@ -641,6 +686,7 @@ The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompte
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried with engene or encoords is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
 * Requests to GenBank with gbgene, gbcoords, or gbrecord sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords, gbgene, or gbrecord, try running the command once or twice again, and the query should go through.
 * When running either gbcoords or gbgene on a large sequence record (e.g. a whole chromosome), it may take several tens of seconds to run, compared to the almost instant response from encoords and engene. This is because the gb scripts always search through the entire chromosomal record for gene features in the specified range, while the en scripts are able to narrow their search range to this range from the beginning.
+* In the graphical representation, if two or more gene transcripts have identical start and end coordinates, only one of the transcripts will be visualised.
 
 ## Bugs
 Please submit via the [GitHub issues page](https://github.com/jakeleyhr/GetVISTA/issues).  
