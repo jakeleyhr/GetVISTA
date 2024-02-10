@@ -4,7 +4,7 @@
 File: envistacoords.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
-Date: January 2024
+Date: February 2024
 Description: Query the Ensembl database with species and genomic coordinates to obtain FASTA file and gene feature coordinates in pipmaker format
 """
 
@@ -144,9 +144,8 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                     if start_position > sequence_length and end_position > sequence_length:
                         print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
                         
-
                     if nocut == False:
-                        if not (start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length):
+                        if not ((start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length)):
                             if start_position < 0:
                                 if apply_reverse_complement:
                                     transcript_name += f"-cut3':{1 - start_position}bp"
@@ -162,7 +161,6 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                             coordinates_content += f"{strand_indicator} {start_position} {end_position} {transcript_name}\n" # Assemble header line
                     else: 
                         coordinates_content += f"{strand_indicator} {start_position} {end_position} {transcript_name}\n" # Assemble header line
-
 
                     coordinates = []
 
@@ -384,6 +382,71 @@ def useflanks(genes, genomic_coordinates, flank):
     return new_genomic_coordinates, gene_name_input1, gene_name_input2
 
 
+#Function C - add graphical display
+def graphic(coordinates_content, sequence_length, all_transcripts):
+    graphic_coordinates = []
+    for line in coordinates_content.split('\n'):
+        if line.startswith('>') or line.startswith('<'):
+            parts = line.split()
+            gene_start = int(parts[1])
+            gene_end = int(parts[2])
+            gene_name = parts[3]
+            direction = parts[0]
+            graphic_coordinates.append((gene_start, gene_end, gene_name, direction))
+    if all_transcripts:
+        bp_per_dash = max(sequence_length//3000,40)
+    else:
+        bp_per_dash = max(sequence_length//3000,70)
+    num_dashes = sequence_length // bp_per_dash
+    genomic_map = ['='] * num_dashes
+
+    # Sort gene coordinates by start and end coordinates
+    graphic_coordinates.sort(key=lambda x: (x[0], x[1]))
+    #print(graphic_coordinates)
+    adjusted = False
+    # Adjust start coordinates that are under bp_per_dash
+    for i, (gene_start, _, _, _) in enumerate(graphic_coordinates):
+        if gene_start <= bp_per_dash and not adjusted:
+            adjusted = True
+            continue
+        if gene_start <= bp_per_dash and adjusted:
+            graphic_coordinates[i] = (graphic_coordinates[i][0] + bp_per_dash*i, *graphic_coordinates[i][1:])
+            adjusted = True
+
+    # Proceed to generate graphic
+    for i in range(len(graphic_coordinates)):
+        gene_start, gene_end, gene_name, direction = graphic_coordinates[i]
+        gene_start_dash = (gene_start - 1) // bp_per_dash
+        gene_end_dash = (gene_end - 1) // bp_per_dash
+
+        if gene_start_dash == gene_end_dash:
+            # Gene fits within one dash
+            genomic_map[gene_start_dash] = f"{direction}{gene_name}{direction}"
+        else:
+            # Gene spans multiple dashes
+            genomic_map[gene_start_dash] = f"{direction}{gene_name}{direction}"
+            for j in range(gene_start_dash + 1, min(gene_end_dash + 1, len(genomic_map))):
+                genomic_map[j] = ''
+
+        # Adjust start coordinate if there are overlapping genes with same start
+        if i < len(graphic_coordinates) - 1:
+            next_gene_start, next_gene_end, _, _ = graphic_coordinates[i + 1]
+            if gene_start == next_gene_start:
+                if gene_end > next_gene_end:
+                    graphic_coordinates[i] = list(graphic_coordinates[i])
+                    graphic_coordinates[i][0] += 1
+                    graphic_coordinates[i] = tuple(graphic_coordinates[i])
+                else:
+                    graphic_coordinates[i + 1] = list(graphic_coordinates[i + 1])
+                    graphic_coordinates[i + 1][0] += 1
+                    graphic_coordinates[i + 1] = tuple(graphic_coordinates[i + 1])
+
+    # Combine adjacent directionality markers
+    genomic_map_combined = ''.join(genomic_map).replace("<>", "#").replace("><", "#").replace("<<", "#").replace(">>", "#")
+    print(f"\nGraphical representation of specified sequence region:")
+    print(genomic_map_combined)
+
+
 def encoords(
     species, 
     genomic_coordinates, 
@@ -393,7 +456,8 @@ def encoords(
     nocut=None, 
     apply_reverse_complement=False, 
     autoname=False, 
-    flank = None
+    flank = None,
+    vis=False
 ):
     #Check if query sequence is >5Mb
     coordssplit = re.match(r"([^\.]+)?\.?(\d+):(\d+)-(\d+)", genomic_coordinates)
@@ -468,28 +532,27 @@ def encoords(
     if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
         coordinates_output_file += ".txt"
 
+    if apply_reverse_complement:
+        coordinates_content = reverse_coordinates(coordinates_content, sequence_length) # Reverse the coordinates
+        message=f"\nReversed coordinates saved to "
+        if vis:
+            graphic(coordinates_content, sequence_length, all_transcripts)
+    else:
+        message=f"\nCoordinates saved to "
+        if vis:
+            graphic(coordinates_content, sequence_length, all_transcripts)
+            
+    # If run with -anno (save annotation coordinates):
+    if coordinates_output_file:
+        with open(coordinates_output_file, 'w') as coordinates_file:
+                coordinates_file.write(coordinates_content)
+        print(f"{message}{coordinates_output_file}")
+    else:
+        print("\nNo coordinates output file specified")
+
     # Check if ".txt" is already at the end of the fasta_output_file argument
     if fasta_output_file and not fasta_output_file.endswith(".txt"):
         fasta_output_file += ".txt"
-
-    print("")
-    # If run with -anno (save annotation coordinates):
-    if coordinates_output_file:
-        if apply_reverse_complement:
-            reversed_coordinates = reverse_coordinates(coordinates_content, sequence_length) # Reverse the coordinates
-            # Save the reversed coordinates to the specified output file
-            with open(coordinates_output_file, 'w') as reversed_coordinates_file:
-                reversed_coordinates_file.write(reversed_coordinates)
-            print(f"Reversed coordinates saved to {coordinates_output_file}")   
-        # Otherwise, write original coordinates to file
-        else:
-            with open(coordinates_output_file, 'w') as coordinates_file:
-                coordinates_file.write(coordinates_content)
-            print(f"Coordinates saved to {coordinates_output_file}")  
-
-    else:
-        print("No coordinates output file specified") # Print to notify user no annotation file specified as output
-
 
     fasta_lines = download_dna_sequence(species, genomic_coordinates)
     # Split FASTA header line from DNA sequence
@@ -541,6 +604,7 @@ def main():
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on species and genomic coordinates")
     parser.add_argument("-flank", default=None, help="Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them")
+    parser.add_argument("-vis", action="store_true", default=False, help="Display graphical representation of the sequence in the terminal")
 
     # Parse the command-line arguments
     args = parser.parse_args() 
@@ -555,7 +619,8 @@ def main():
         args.nocut,
         args.rev,
         args.autoname,
-        args.flank
+        args.flank,
+        args.vis
     )
 
     

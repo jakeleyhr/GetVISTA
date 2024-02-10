@@ -24,10 +24,9 @@ from getvista.version_check import check_for_updates
 #http.client.HTTPConnection._http_vsn = 10
 #http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
 
-
 # Function #3 - get list of genes and features in specified region
 def get_genes_in_region(accession, requested_start_position, requested_end_position, X):
-    # Set your email address if not already done
+    # Set email address if not already done
     config = configparser.ConfigParser()
     current_dir = os.path.dirname(__file__) # Get the directory path of the current script
     config_file_path = os.path.join(current_dir, 'config.ini') # Specify the path to config.ini relative to the script's directory
@@ -628,6 +627,72 @@ def useflanks(collected_features, start_position, end_position, flank):
     return new_start, new_end, gene_name_input1, gene_name_input2
 
 
+#Function E - add graphical display
+def graphic(formatted_coordinates, sequence_length, X):
+    graphic_coordinates = []
+    for line in formatted_coordinates.split('\n'):
+        if line.startswith('>') or line.startswith('<'):
+            parts = line.split()
+            gene_start = int(parts[1])
+            gene_end = int(parts[2])
+            gene_name = parts[3]
+            direction = parts[0]
+            graphic_coordinates.append((gene_start, gene_end, gene_name, direction))
+
+    if X:
+        bp_per_dash = 30 
+    else:
+        bp_per_dash = 70
+    num_dashes = sequence_length // bp_per_dash
+    genomic_map = ['='] * num_dashes
+
+    # Sort gene coordinates by start and end coordinates
+    graphic_coordinates.sort(key=lambda x: (x[0], x[1]))
+    #print(graphic_coordinates)
+    adjusted = False
+    # Adjust start coordinates that are under bp_per_dash
+    for i, (gene_start, _, _, _) in enumerate(graphic_coordinates):
+        if gene_start <= bp_per_dash and not adjusted:
+            adjusted = True
+            continue
+        if gene_start <= bp_per_dash and adjusted:
+            graphic_coordinates[i] = (graphic_coordinates[i][0] + bp_per_dash*i, *graphic_coordinates[i][1:])
+            adjusted = True
+
+    # Proceed to generate graphic
+    for i in range(len(graphic_coordinates)):
+        gene_start, gene_end, gene_name, direction = graphic_coordinates[i]
+        gene_start_dash = (gene_start - 1) // bp_per_dash
+        gene_end_dash = (gene_end - 1) // bp_per_dash
+
+        if gene_start_dash == gene_end_dash:
+            # Gene fits within one dash
+            genomic_map[gene_start_dash] = f"{direction}{gene_name}{direction}"
+        else:
+            # Gene spans multiple dashes
+            genomic_map[gene_start_dash] = f"{direction}{gene_name}{direction}"
+            for j in range(gene_start_dash + 1, min(gene_end_dash + 1, len(genomic_map))):
+                genomic_map[j] = ''
+
+        # Adjust start coordinate if there are overlapping genes with same start
+        if i < len(graphic_coordinates) - 1:
+            next_gene_start, next_gene_end, _, _ = graphic_coordinates[i + 1]
+            if gene_start == next_gene_start:
+                if gene_end > next_gene_end:
+                    graphic_coordinates[i] = list(graphic_coordinates[i])
+                    graphic_coordinates[i][0] += 1
+                    graphic_coordinates[i] = tuple(graphic_coordinates[i])
+                else:
+                    graphic_coordinates[i + 1] = list(graphic_coordinates[i + 1])
+                    graphic_coordinates[i + 1][0] += 1
+                    graphic_coordinates[i + 1] = tuple(graphic_coordinates[i + 1])
+
+    # Combine adjacent directionality markers
+    genomic_map_combined = ''.join(genomic_map).replace("<>", "#").replace("><", "#").replace("<<", "#").replace(">>", "#")
+    print(f"\nGraphical representation of specified sequence region:")
+    print(genomic_map_combined)
+
+
 def gbcoords(
     accession,
     gencoordinates,
@@ -637,7 +702,8 @@ def gbcoords(
     nocut=None,
     apply_reverse_complement=False,
     autoname=False,
-    flank=None
+    flank=None,
+    vis=False
 ):  
     # Terminate script if flank argument supplied but not 'in' or 'ex'
     if flank not in ["in", "ex", None]:
@@ -671,91 +737,87 @@ def gbcoords(
         new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank)
         genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, new_start, new_end, X)
 
-    # If -anno argument is included (or -autoname), collect feature coordinates and write to .txt file:
-    if coordinates_output_file or autoname:
-        # Get 2 reformatted lists of genes and features: 1 for ncRNAs, and 1 for paired mRNA/CDS features
-        ncrna_list, paired_list = reformat(collected_features)
-
-        # print("Features in the specified region:")
-        # print("List of Protein-coding gene features:", paired_list)
-        # print("List of ncRNAs:", ncrna_list)
-
-        # Convert the lists of features into the final pipmaker format
-        coordinates = pipmaker(paired_list, ncrna_list, start_position)
-
-        # If -nocut argument is included, continue. If not, cut the ends to remove coordinates out of range.
-        if nocut is False:
-            coordinates = cut(coordinates, sequence_length)
-
-        # Format the coordinates into string with lines
-        formatted_coordinates = ""
-        for i, line in enumerate(coordinates):
-            if i > 0 and (line.startswith("<") or line.startswith(">")):
-                formatted_coordinates += "\n\n"  # Add 2 blank lines before the header line
-            parts = line.split()
-            if (line.startswith("<") or line.startswith(">")):
-                formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]} {parts[3]}\n"
+    
+    # Get 2 reformatted lists of genes and features: 1 for ncRNAs, and 1 for paired mRNA/CDS features
+    ncrna_list, paired_list = reformat(collected_features)
+    # print("Features in the specified region:")
+    # print("List of Protein-coding gene features:", paired_list)
+    # print("List of ncRNAs:", ncrna_list)
+    # Convert the lists of features into the final pipmaker format
+    coordinates = pipmaker(paired_list, ncrna_list, start_position)
+    # If -nocut argument is included, continue. If not, cut the ends to remove coordinates out of range.
+    if nocut is False:
+        coordinates = cut(coordinates, sequence_length)
+    # Format the coordinates into string with lines
+    formatted_coordinates = ""
+    for i, line in enumerate(coordinates):
+        if i > 0 and (line.startswith("<") or line.startswith(">")):
+            formatted_coordinates += "\n\n"  # Add 2 blank lines before the header line
+        parts = line.split()
+        if (line.startswith("<") or line.startswith(">")):
+            formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]} {parts[3]}\n"
+        else:
+            formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]}\n"
+    # Automatically generate output file names if -autoname is provided
+    if autoname and not flank:
+        if not fasta_output_file:
+            if not apply_reverse_complement:
+                fasta_output_file = f"{accession}_{start_position}-{end_position}.fasta.txt"
             else:
-                formatted_coordinates += f"{parts[0]} {parts[1]} {parts[2]}\n"
+                fasta_output_file = (f"{accession}_{start_position}-{end_position}_revcomp.fasta.txt")
+        if not coordinates_output_file:
+            if not apply_reverse_complement:
+                coordinates_output_file = (f"{accession}_{start_position}-{end_position}.annotation.txt")
+            else:
+                coordinates_output_file = (f"{accession}_{start_position}-{end_position}_revcomp.annotation.txt")
+    if autoname and (flank == "in"):
+        if not fasta_output_file:
+            if not apply_reverse_complement:
+                fasta_output_file = f"{accession}__{fgene1}-{fgene2}.fasta.txt"
+            else:
+                fasta_output_file = (f"{accession}__{fgene2}-{fgene1}_revcomp.fasta.txt")
+        if not coordinates_output_file:
+            if not apply_reverse_complement:
+                coordinates_output_file = (f"{accession}__{fgene1}-{fgene2}.annotation.txt")
+            else:
+                coordinates_output_file = (f"{accession}__{fgene2}-{fgene1}_revcomp.annotation.txt")    
+    if autoname and (flank == "ex"):
+        if not fasta_output_file:
+            if not apply_reverse_complement:
+                fasta_output_file = f"{accession}__{fgene1}-{fgene2}.ex.fasta.txt"
+            else:
+                fasta_output_file = (f"{accession}__{fgene2}-{fgene1}.ex_revcomp.fasta.txt")
+        if not coordinates_output_file:
+            if not apply_reverse_complement:
+                coordinates_output_file = (f"{accession}__{fgene1}-{fgene2}.ex.annotation.txt")
+            else:
+                coordinates_output_file = (f"{accession}__{fgene2}-{fgene1}.ex_revcomp.annotation.txt") 
 
-        # Automatically generate output file names if -autoname is provided
-        if autoname and not flank:
-            if not fasta_output_file:
-                if not apply_reverse_complement:
-                    fasta_output_file = f"{accession}_{start_position}-{end_position}.fasta.txt"
-                else:
-                    fasta_output_file = (f"{accession}_{start_position}-{end_position}_revcomp.fasta.txt")
-            if not coordinates_output_file:
-                if not apply_reverse_complement:
-                    coordinates_output_file = (f"{accession}_{start_position}-{end_position}.annotation.txt")
-                else:
-                    coordinates_output_file = (f"{accession}_{start_position}-{end_position}_revcomp.annotation.txt")
-        if autoname and (flank == "in"):
-            if not fasta_output_file:
-                if not apply_reverse_complement:
-                    fasta_output_file = f"{accession}__{fgene1}-{fgene2}.fasta.txt"
-                else:
-                    fasta_output_file = (f"{accession}__{fgene2}-{fgene1}_revcomp.fasta.txt")
-            if not coordinates_output_file:
-                if not apply_reverse_complement:
-                    coordinates_output_file = (f"{accession}__{fgene1}-{fgene2}.annotation.txt")
-                else:
-                    coordinates_output_file = (f"{accession}__{fgene2}-{fgene1}_revcomp.annotation.txt")    
-        if autoname and (flank == "ex"):
-            if not fasta_output_file:
-                if not apply_reverse_complement:
-                    fasta_output_file = f"{accession}__{fgene1}-{fgene2}.ex.fasta.txt"
-                else:
-                    fasta_output_file = (f"{accession}__{fgene2}-{fgene1}.ex_revcomp.fasta.txt")
-            if not coordinates_output_file:
-                if not apply_reverse_complement:
-                    coordinates_output_file = (f"{accession}__{fgene1}-{fgene2}.ex.annotation.txt")
-                else:
-                    coordinates_output_file = (f"{accession}__{fgene2}-{fgene1}.ex_revcomp.annotation.txt") 
+    # Check if ".txt" is already at the end of the coordinates_output_file argument
+    if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
+        coordinates_output_file += ".txt"
+  
+    if apply_reverse_complement:
+        formatted_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
+        message=f"Reversed coordinates saved to "
+        if vis:
+            graphic(formatted_coordinates, sequence_length, X)
+    else:
+        message=f"Coordinates saved to "
+        if vis:
+            graphic(formatted_coordinates, sequence_length, X)
+            
+    # If run with -anno (save annotation coordinates):
+    if coordinates_output_file or autoname:
+        with open(coordinates_output_file, 'w') as coordinates_file:
+                coordinates_file.write(formatted_coordinates)
+        print(f"{message}{coordinates_output_file}")
+    else:
+        print("No coordinates output file specified")
 
-        # Check if ".txt" is already at the end of the coordinates_output_file argument
-        if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
-            coordinates_output_file += ".txt"
-
-        # Check if ".txt" is already at the end of the fasta_output_file argument
+    # Check if ".txt" is already at the end of the fasta_output_file argument
         if fasta_output_file and not fasta_output_file.endswith(".txt"):
             fasta_output_file += ".txt"
-
-        # Check if need to reverse complement and write to txt file
-        if not apply_reverse_complement:
-            with open(coordinates_output_file, 'w') as coordinates_file:
-                coordinates_file.write(formatted_coordinates)
-            print(f"Coordinates saved to {coordinates_output_file}") 
-            print("")
-        else:
-            reversed_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
-            with open(coordinates_output_file, 'w') as coordinates_file:
-                coordinates_file.write(reversed_coordinates)
-            print(f"Reversed feature coordinates saved to {coordinates_output_file}")
-            print("")
-                
-    else:
-        print("No pipmaker output file specified.")
 
     # If -fasta argument is included (or -autoname), write the DNA sequence to a txt file:
     if fasta_output_file or autoname:
@@ -788,6 +850,7 @@ def main():
     parser.add_argument("-rev", action="store_true", default=False, help="Reverse complement DNA sequence and coordinates")
     parser.add_argument("-autoname", action="store_true", default=False, help="Automatically generate output file names based on accession and genomic coordinates")
     parser.add_argument("-flank", default=None, help="Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them")
+    parser.add_argument("-vis", action="store_true", default=False, help="Display graphical representation of the sequence in the terminal")
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -802,7 +865,8 @@ def main():
         args.nocut,
         args.rev,
         args.autoname,
-        args.flank
+        args.flank,
+        args.vis
     )
 
     
