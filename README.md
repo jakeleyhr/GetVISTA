@@ -406,7 +406,7 @@ Instead of this manual reversing of the strand direction, the **-fw** argument f
 
 Crucially, multiple species names can be included as arguments with **-s**, for example:
 ```
-engene -s human mouse chicken -g gdf5 -autoname -sa 50000 -ea 20000 -fw
+$ engene -s human mouse chicken -g gdf5 -autoname -sa 50000 -ea 20000 -fw
 ```
 In this case, the module behaves just as previously described, just iterating through the different species names (separated by spaces). As a result, in this example the 6 output files for all 3 species will be saved in the working directory, and the output in the terminal looks like this:
 ```
