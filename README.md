@@ -1,5 +1,5 @@
 # GetVISTA
-Query Ensembl to obtain genomic information in VISTA format. Useful for collecting sequences to run in [mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) multi-species alignment.
+Query Ensembl or GenBank to obtain genomic information in VISTA format. Useful for collecting sequences to run in [mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) multi-species sequence conservation analyses.
 * **envistagene.py**: query _Ensembl_ database with species and _gene name_
 * **gbvistagene.py**: query _GenBank_ database with species and _gene name_
 * **envistacoords.py**: query _Ensembl_ database with species and _genomic coordinates_
@@ -7,8 +7,10 @@ Query Ensembl to obtain genomic information in VISTA format. Useful for collecti
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
 * **emailaddress.py**: check and update the email address used to make GenBank Entrez queries
 * **version_check.py**: check package version is up to date
- 
-![getvista schematic](https://github.com/jakeleyhr/GetVISTA/assets/154226340/e3e9f11a-9553-4648-a212-31c8e3c38609)
+
+<img src="https://github.com/jakeleyhr/GetVISTA/assets/154226340/41d2c750-5241-4962-9c00-8a7b973bb1ef" width="800">
+
+
 
 ## Author
 Jake Leyhr ([@jakeleyhr](https://twitter.com/JakeLeyhr)) \
@@ -131,7 +133,7 @@ Coordinates saved to annotationfilename.txt
 DNA sequence saved to fastafilename.txt
 ```
 
-Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files will be saved to the working directory. This can be useful for quickly testing a set of arguments without cluttered up your working directory with test output files.
+Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files will be saved to the working directory. This can be useful for quickly testing a set of arguments without cluttering up your working directory with test output files.
 ```
 $ engene -s human -g gdf5
 
@@ -307,7 +309,7 @@ produces the following text in the annotation file:
 Bear in mind that this file won't work as an input to mVISTA, because the annotation coordinates have to match the fasta file and having negative coordinates or coordinates greater than the total sequence length will result in an error. However, this option can be useful to see the number of features that are cut off in the default output.
 
 ## -vis
-On the subject of seeing, when the **-vis** flag is included in the commmand, a simple graphical representation of the specified sequence region is printed in the terminal:
+On the subject of seeing, when the **-vis** flag is included in the command, a simple graphical representation of the specified sequence region is printed in the terminal:
 ```
 $ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 -vis
 
@@ -338,7 +340,7 @@ Graphical representation of specified sequence region:
 Coordinates saved to human_gdf5_20.35383347-35474746.annotation.txt
 DNA sequence saved to human_gdf5_20.35383347-35474746.fasta.txt
 ```
-Here, the transcripts in the region are printed with their strand directions indicated by the flanking '>' or '<' symbols, and the '=' symbols represent intergenic sequences. Partially overlapping transcripts, such as GDF5-AS-1 and GDF5-201, are shown by the presence of the '#' symbol between two two names. The length of the displayed intergenic sequences are approximately accurate, while genes are only represented by their printed names, regardless of size.
+Here, the transcripts in the region are printed with their strand directions indicated by the flanking '>' or '<' symbols while the '=' symbols represent intergenic sequences. Partially overlapping transcripts, such as GDF5-AS-1 and GDF5-201, are shown by the presence of the '#' symbol between the two names. The lengths of the displayed intergenic sequences are approximately accurate, while genes are only represented by their printed names, regardless of size.
 
 ## -all
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
@@ -366,7 +368,7 @@ However, by including the **-all** flag in the command, all transcripts are incl
 21294 21400 UTR
 ```
 ## -rev
-Also by default, the specified genomic region is read on the genome assembly's forward strand, but for some purposes a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. We have already seen that the human GDF5 gene is on the reverse strand (indicated by left-facing '<' in the annotation file), so using the **-rev** argument:
+Also by default, the specified genomic region is read on the genome assembly's forward strand, but for some purposes, a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. We have already seen that the human GDF5 gene is on the reverse strand (indicated by left-facing '<' in the annotation file), so using the **-rev** argument:
 ```
 $ engene -s human -g gdf5 -autoname -rev              
 ```
@@ -387,7 +389,7 @@ MIR1289-1-201
 Reversed coordinates saved to human_gdf5_revcomp.annotation.txt
 Reverse complement DNA sequence saved to human_gdf5_revcomp.fasta.txt
 ```
-The automatically-generated output file names reflect the fact that the sequence and annotation coordinates have been reversed, the coordinates looking like this:
+The automatically generated output file names reflect the fact that the sequence and annotation coordinates have been reversed, the coordinates looking like this:
 ```
 < 19297 21400 GDF5-AS1-201-cut3':318bp
 19297 20895 exon
@@ -466,9 +468,9 @@ ENSGALT00010061120
 Coordinates saved to chicken_gdf5_20.1513813-1588758.annotation.txt
 DNA sequence saved to chicken_gdf5_20.1513813-1588758.fasta.txt
 ```
-The inclusion of the **-fw** argument caused the human and mouse strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjection with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
+The inclusion of the **-fw** argument caused the human and mouse strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjunction with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
 ## -flank
-Finally, the last option for specifying the sequence region is **-flank**. Adding this argument causes the module to pause after printing the list of genes in the specified sequence region, and prompts the user to input two genes names from this list. These two genes are then used to define the boundaries of a new sequence region, wherupon the module reruns to extract the feature coordinates and fasta sequence corresponding to this new region. **-flank** can be used in two modes: **-flank in** includes the two genes within the boundaries, such that the new sequence begins at the first base of the first gene and ends at the last base of the second gene (read left toright along the forward strand), while **-flank ex** excludes these genes, such that the new sequence begins immediately after the first gene, and ends immediately prior to the second gene. For example, imagine engene is run with Gene X as an input and **-sa 100000 -ea 100000** so the region includes Gene V, Gene W, Gene X, Gene Y,and Gene Z. When the **-flank in** argument is included and Gene W and Gene Y are entered at the prompt, the new sequence includes Genes W, X, and Y, and the intergenic sequences between them. On the other hand, when the **-flank ex** argument is used and Gene W and Gene Y are entered at the prompt, the new sequence only includes Gene X and the intergenic sequences either side of it.
+Finally, the last option for specifying the sequence region is **-flank**. Adding this argument causes the module to pause after printing the list of genes in the specified sequence region, and prompts the user to input two gene names from this list. These two genes are then used to define the boundaries of a new sequence region, whereupon the module reruns to extract the feature coordinates and fasta sequence corresponding to this new region. **-flank** can be used in two modes: **-flank in** includes the two genes within the boundaries, such that the new sequence begins at the first base of the first gene and ends at the last base of the second gene (read left to right along the forward strand), while **-flank ex** excludes these genes, such that the new sequence begins immediately after the first gene, and ends immediately before the second gene. For example, imagine engene is run with Gene C as an input and **-sa 100000 -ea 100000** so the region includes Gene A, Gene B, Gene C, Gene D, and Gene E. When the **-flank in** argument is included and Gene B and Gene D are entered at the prompt, the new sequence includes just Genes B, C, and D, and the two intergenic sequences between them. On the other hand, when the **-flank ex** argument is used and Gene B and Gene D are entered at the prompt, the new sequence only includes Gene C and the intergenic sequences on either side of it.
 
 &nbsp;
 &nbsp;
@@ -511,7 +513,7 @@ options:
                         genes, 'ex' to exclude them
   -vis                  Display graphical representation of the sequence in the terminal
 ```
-This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particualrly relevant when exploring new geomes with few manually curated genes/transcripts. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but in some cases a different record may be desired (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark).
+This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particularly relevant when exploring new genomes with few manually curated genes/transcripts. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but a different record may be desired in some cases (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark).
 
 
 
@@ -553,7 +555,7 @@ options:
                         genes, 'ex' to exclude them
   -vis                  Display graphical representation of the sequence in the terminal
 ```
-The encoords modules works similarly to engene, but with some critical differences as the intention is to query a set of genomic coordinates instead of a gene name. Therefore, the **-g** argument is replaced by **-c**, and the coordinates are entered in the format 'chromosome:start-end' e.g:
+The encoords module works similarly to engene, but with some critical differences as the intention is to query a set of genomic coordinates instead of a gene name. Therefore, the **-g** argument is replaced by **-c**, and the coordinates are entered in the format 'chromosome:start-end' e.g:
 ```
 $ encoords -s mouse -c 5:30810000-30890000 -autoname
 
@@ -602,7 +604,7 @@ options:
                         genes, 'ex' to exclude them
   -vis                  Display graphical representation of the sequence in the terminal
 ```
-This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a speces name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
+This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a species name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
 ```
 $ gbcoords -a NC_000020 -c 500000-600000
 ```
@@ -622,7 +624,7 @@ $ gbcoords -a NC_000020 -c 500000-600000
 usage: gbrecord [-h] -s SPECIES -g GENE_NAME
 
 Query the GenBank database with a species and gene name to obtain a list of different 
-records containing the sequence to inform use of the gbgene module.
+records containing the sequence to inform the use of the gbgene module.
 
 options:
   -h, --help            show this help message and exit
@@ -655,7 +657,7 @@ Accession: NC_060944
 Location: 37154207:37175639
 Length: 21433
 ```
-This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to the using the default (**-r 0**) GRCh38.p14 record. For example, the command 
+This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to using the default (**-r 0**) GRCh38.p14 record. For example, the command 
 ```
 $ gbgene -s human -g gdf5 -autoname -r 0
 ```
@@ -682,7 +684,7 @@ options:
   -check      Check the current saved email address
   -update     Update the email address
 ```
-The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompted for an email address as NCBI requires this to send queries via Entrez. After you enter this email address the first time, you won't need to enter it again, as it saved localled to a config file in the package directory. It is never shared with anyone except NCBI when you send queries via Entrez. This accessory module provides the option to check or update (change) this email address if you decide to use a different address at a later date. Any dummy email address or word (e.g. 'dummy@gmail.com' or 'dummy') can also be used if preferred. 
+The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompted for an email address as NCBI requires this to send queries via Entrez. After you enter this email address the first time, you won't need to enter it again, as it saved locally to a config file in the package directory. It is never shared with anyone except NCBI when you send queries via Entrez. This accessory module provides the option to check or update (change) this email address if you decide to use a different address at a later date. Any dummy email address or word (e.g. 'dummy@gmail.com' or 'dummy') can also be used if preferred. 
 
 
 &nbsp;
