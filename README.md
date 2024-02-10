@@ -84,6 +84,7 @@ options:
   -vis                  Display graphical representation of the sequence in the terminal
 ```
 ## engene inputs:
+## -s, -g, and -autoname
 The simplest inputs are the species name (**-s**) and gene name (**-g**), along with the **-autoname** flag:
 ```
 $ engene -s human -g gdf5 -autoname
@@ -105,10 +106,11 @@ MIR1289-1-201
 Coordinates saved to human_gdf5.annotation.txt
 DNA sequence saved to human_gdf5.fasta.txt
 ```
-The species name has to be entered in a form recognised by Ensembl, which includes binomial and one-word common names. For species with multi-word species names such as Spotted Gar, the binomial name must be used with an underscore i.e. Lepisosteus_oculatus.
+The species name has to be entered in a form recognised by Ensembl, which includes binomial and one-word common names. For species with multi-word species names such as Spotted Gar, the binomial name must be used with an underscore i.e. Lepisosteus_oculatus. Multiple species names can be entered, not just one, as will be explained later in this document.
 
 Two text files are generated in the working directory - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected in pipmaker format, and the second contains the DNA sequence of the selected region in fasta format. By using the **-autoname** flag, the names of these files were automatically generated from the species and gene name inputs.
 
+## -anno and -fasta
 Alternatively, the output file names can be specified manually using the **-anno** and **-fasta** arguments, e.g:
 ```
 $ engene -s human -g gdf5 -fasta fastafilename -anno annotationfilename
@@ -168,7 +170,7 @@ MIR1289-1-201
 Coordinates saved to annotationfilename.txt
 DNA sequence saved to human_gdf5.fasta.txt
 ```
-
+## -sa and -ea
 Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the human gdf5 gene plus an additional 50,000bp from the 5' flank and an additional 20,000bp from the 3' flank (direction relative to the assembly forward strand):
 ```
 $ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 
@@ -228,6 +230,7 @@ In the output, note that the gene length is 21,400bp, but the total sequence len
 90028 90206 exon
 90524 90706 exon
 ```
+## -nocut
 Also by default, the module carefully trims the transcript coordinates to ensure that the reported coordinates fit inside the specified region and only features inside the region are included. In this case, the specified coordinate range cut off 80,769bp from the UQCC1 gene-205 transcript, and 44,534bp has been cut off the CEP250-205, and this information about the truncation has been added to the transcript names to make it clear to the user that the selection has cut off part of these transcripts.
 This option can be turned off by including the **-nocut** flag, such that cut-off parts of the transcripts are still included in the annotation file, with negative coordinates or coordinates that extend beyond the end the sequence:
 ```
@@ -303,6 +306,7 @@ produces the following text in the annotation file:
 ```
 Bear in mind that this file won't work as an input to mVISTA, because the annotation coordinates have to match the fasta file and having negative coordinates or coordinates greater than the total sequence length will result in an error. However, this option can be useful to see the number of features that are cut off in the default output.
 
+## -vis
 On the subject of seeing, when the **-vis** flag is included in the commmand, a simple graphical representation of the specified sequence region is printed in the terminal:
 ```
 $ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000 -vis
@@ -336,6 +340,7 @@ DNA sequence saved to human_gdf5_20.35383347-35474746.fasta.txt
 ```
 Here, the transcripts in the region are printed with their strand directions indicated by the flanking '>' or '<' symbols, and the '=' symbols represent intergenic sequences. Partially overlapping transcripts, such as GDF5-AS-1 and GDF5-201, are shown by the presence of the '#' symbol between two two names. The length of the displayed intergenic sequences are approximately accurate, while genes are only represented by their printed names, regardless of size.
 
+## -all
 By default, only the exon and UTR coordinates of the canonical gene transcripts are included in the annotation .txt file, e.g:
 ```
 < 1 4882 GDF5-201
@@ -360,7 +365,7 @@ However, by including the **-all** flag in the command, all transcripts are incl
 7886 8041 UTR
 21294 21400 UTR
 ```
-
+## -rev
 Also by default, the specified genomic region is read on the genome assembly's forward strand, but for some purposes a gene on the reverse strand may want to be collected in the 5'>3' direction. In such cases, the **-rev** flag can be included. This reverse complements the DNA sequence returned in the fasta file (in addition to modifying the header to reflect this by changing :1 to :-1). It also flips the annotation coordinates. We have already seen that the human GDF5 gene is on the reverse strand (indicated by left-facing '<' in the annotation file), so using the **-rev** argument:
 ```
 $ engene -s human -g gdf5 -autoname -rev              
@@ -396,7 +401,7 @@ The automatically-generated output file names reflect the fact that the sequence
 > 650 793 MIR1289-1-201
 650 793 exon
 ```
-
+## -fw and multi-species entry
 Instead of this manual reversing of the strand direction, the **-fw** argument forces the use of the forward strand for the specified gene. For example, if you know you always want your target gene to be on the forward strand, you can add the **-fw** argument every time, because if the target gene is already on the forward strand, it won't reverse the direction, but if it's on the reverse strand, it will.
 
 Crucially, multiple species names can be included as arguments with **-s**, for example:
@@ -461,8 +466,8 @@ ENSGALT00010061120
 Coordinates saved to chicken_gdf5_20.1513813-1588758.annotation.txt
 DNA sequence saved to chicken_gdf5_20.1513813-1588758.fasta.txt
 ```
-Note that in addition to easily collecting sequence and annotation files for 3 species in a matter of seconds, the inclusion of the **-fw** argument caused the human and mouse strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjection with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
-
+The inclusion of the **-fw** argument caused the human and mouse strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjection with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
+## -flank
 Finally, the last option for specifying the sequence region is **-flank**. Adding this argument causes the module to pause after printing the list of genes in the specified sequence region, and prompts the user to input two genes names from this list. These two genes are then used to define the boundaries of a new sequence region, wherupon the module reruns to extract the feature coordinates and fasta sequence corresponding to this new region. **-flank** can be used in two modes: **-flank in** includes the two genes within the boundaries, such that the new sequence begins at the first base of the first gene and ends at the last base of the second gene (read left toright along the forward strand), while **-flank ex** excludes these genes, such that the new sequence begins immediately after the first gene, and ends immediately prior to the second gene. For example, imagine engene is run with Gene X as an input and **-sa 100000 -ea 100000** so the region includes Gene V, Gene W, Gene X, Gene Y,and Gene Z. When the **-flank in** argument is included and Gene W and Gene Y are entered at the prompt, the new sequence includes Genes W, X, and Y, and the intergenic sequences between them. On the other hand, when the **-flank ex** argument is used and Gene W and Gene Y are entered at the prompt, the new sequence only includes Gene X and the intergenic sequences either side of it.
 
 &nbsp;
