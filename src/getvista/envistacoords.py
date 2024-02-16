@@ -15,6 +15,7 @@ import time
 import argparse
 import requests
 import re
+from shutil import get_terminal_size
 from Bio import SeqIO
 from Bio.Seq import Seq
 from getvista.version_check import check_for_updates
@@ -137,13 +138,14 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                     start_position = transcript.get('start') - input_region_start + new_start
                     end_position = transcript.get('end') - input_region_start + new_start
                     transcript_name = transcript.get('display_name', transcript['id'])
-                    print(transcript_name)
-
+                    
                     if start_position < 0 and end_position < 0:
                         print(f"({transcript_name} transcript out of 5' range:{start_position}:{end_position})")
-                    if start_position > sequence_length and end_position > sequence_length:
+                    elif start_position > sequence_length and end_position > sequence_length:
                         print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
-                        
+                    else:
+                        print(transcript_name)
+
                     if nocut == False:
                         if not ((start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length)):
                             if start_position < 0:
@@ -169,7 +171,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                         for exon in exons:
                             start = exon.get('start') - input_region_start + new_start
                             end = exon.get('end') - input_region_start + new_start
-
+                            
                             if nocut == False:
                                 if start < 0 and end < 0:
                                     continue
@@ -188,10 +190,20 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                 for utr in utrs:
                                     utr_start = utr.get('start') - input_region_start + new_start
                                     utr_end = utr.get('end') - input_region_start + new_start
-
+                                    
                                     if nocut == False:
                                         if utr_start < sequence_length and utr_end > sequence_length:
                                             utr_end = sequence_length
+                                        #print(f"exon start: {start}")
+                                        #print(f"exon end: {end}")
+                                        #print(f"utr start: {utr_start}")
+                                        #print(f"utr end: {utr_end}")
+                                        # if CDS and UTR exon is 5' cut off, make sure UTR takes priority
+                                        if end == utr_end and utr_start<start:
+                                            print('true')
+                                            start = 0
+                                            end = 0
+                                            utr_start=1
 
                                     if start == utr_start and end == utr_end:
                                         start = 0
@@ -213,6 +225,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                             continue
                                         if utr_start < 0:
                                             utr_start = 1
+                                        
 
                             coordinates.append((f"{start} {end} exon", start))
 
@@ -225,7 +238,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                 utr_end = utr_end_abs - input_region_start + new_start
 
                                 if nocut == False:
-                                    if utr_start < 0 and utr_end < 0:
+                                    if utr_start < 0 and utr_end <= 0:
                                         continue
                                     if utr_start > sequence_length and utr_end > sequence_length:
                                         continue
@@ -416,9 +429,15 @@ def graphic(coordinates_content, sequence_length, all_transcripts):
     # Proceed to generate graphic
     for i in range(len(graphic_coordinates)):
         gene_start, gene_end, gene_name, direction = graphic_coordinates[i]
+        print(gene_start)
         gene_start_dash = (gene_start - 1) // bp_per_dash
+        if gene_start_dash==0:
+            gene_start_dash =1
         gene_end_dash = (gene_end - 1) // bp_per_dash
-
+        if gene_end_dash==0:
+            gene_end_dash =41
+        print(f"gene_start_dash: {gene_start_dash}")
+        print(f"gene_end_dash: {gene_end_dash}")
         if gene_start_dash == gene_end_dash:
             # Gene fits within one dash
             genomic_map[gene_start_dash] = f"{direction}{gene_name}{direction}"
@@ -458,17 +477,29 @@ def encoords(
     autoname=False, 
     flank = None,
     vis=False
-):
+):  
+    
+
     #Check if query sequence is >5Mb
     coordssplit = re.match(r"([^\.]+)?\.?(\d+):(\d+)-(\d+)", genomic_coordinates)
     if coordssplit:
-        prefix = coordssplit.group(1)
-        chrom = f"{prefix}.{coordssplit.group(2)}" if prefix else coordssplit.group(2)
+        chrom = genomic_coordinates.split(":")[0]
         start = int(coordssplit.group(3))
         end = int(coordssplit.group(4))
     else:
         print("ERROR: Invalid genomic coordinates format\n")
         sys.exit()
+
+    # Print run header
+    terminalwidth = get_terminal_size()[0]
+    nameswidth = len(f" {species} {chrom}:{start}-{end} ")
+    leftindent = ((terminalwidth-nameswidth)//2)
+    print("")
+    print("▒"*terminalwidth+
+          "▒"*leftindent+ 
+          f" {species} {chrom}:{start}-{end} "+ 
+          "▒"*(terminalwidth-leftindent-nameswidth)+
+          "▒"*terminalwidth)
 
     if (end - start + 1) > 5000000:
         print("ERROR: Query sequence must be under 5Mb")
@@ -477,17 +508,20 @@ def encoords(
     # Get genes info
     client = EnsemblRestClient()
     genes = client.get_genes_in_region(species, genomic_coordinates)
-
-    # If no genes in genes list, terminate script
-    if len(genes) == 0:
-        print("\nNo genes found in region\n")
-        sys.exit()
     
-    print(f"\nAssembly name: {genes[0]['assembly_name']}")
+    try:
+        print(f"Assembly name: {genes[0]['assembly_name']}")
+    except IndexError:
+        pass
 
     if flank:  
         genomic_coordinates, fgene1, fgene2 = useflanks(genes, genomic_coordinates, flank)
         genes = client.get_genes_in_region(species, genomic_coordinates)
+
+    # If no genes in genes list
+    if len(genes) == 0:
+        print("No genes found in region\n")
+        #sys.exit()
 
     # Get coordinates and sequence length
     coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)
@@ -583,7 +617,7 @@ def encoords(
         # Write to file
         SeqIO.write(fasta_record, f"{fasta_output_file}", "fasta")   
     else:
-        print("No sequence output file specified") # Print to notify user neither sequence specified as output
+        print("No FASTA output file specified") # Print to notify user neither sequence specified as output
 
 
 

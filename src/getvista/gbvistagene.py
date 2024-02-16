@@ -14,6 +14,7 @@ import os
 import re
 import argparse
 import sys
+from shutil import get_terminal_size
 from collections import defaultdict
 import configparser
 #import http.client
@@ -79,6 +80,16 @@ def search_gene_info(species, gene_name):
             config.write(configfile)
         print(f"Email address set: '{Entrez.email}'. This will be used for all future queries. \nYou can change the saved email address using 'gbemail -update'")
 
+    # Print run header
+    terminalwidth = get_terminal_size()[0]
+    nameswidth = len(f" {species} {gene_name} ")
+    leftindent = ((terminalwidth-nameswidth)//2)
+    print("▒"*terminalwidth+
+          "▒"*leftindent+ 
+          f" {species} {gene_name} "+ 
+          "▒"*(terminalwidth-leftindent-nameswidth)+
+          "▒"*terminalwidth)
+    
     # Build the query - strict check on species name and gene name (also searches gene name synonyms)
     query = f"{species}[ORGN] AND {gene_name}[Gene Name] OR {gene_name}[Accession]"
 
@@ -100,12 +111,12 @@ def search_gene_info(species, gene_name):
 
 
 # Function #2 - process the gene record and extract relevant information
-def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, gene_name):
+def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, gene_name, gene_oriented_adjustment):
     # Extract the relevant information
     if gene_info:
-        print(f'\nQuery species: {species}')
+        print("Gene info:")
         gene_ref_name = gene_info[0]["Entrezgene_gene"]["Gene-ref"]["Gene-ref_locus"]
-        print(f"Query gene: {gene_ref_name}")
+        print(f"Name: {gene_ref_name}")
         try:
             gene_ref_desc = gene_info[0]["Entrezgene_gene"]["Gene-ref"]["Gene-ref_desc"]
             print(f"Description: {gene_ref_desc}")
@@ -131,7 +142,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         except KeyError:
             print("Strand: None available")
         except IndexError:
-            print("Record ID not found, try a different value.")
+            print(f"ERROR: Record_ID #{record_id} not found. Try a different value")
             sys.exit()
 
         try:
@@ -158,28 +169,32 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
 
         # For debugging - explore the file format:
         # Assuming gene_info is a dictionary, explore the format
-        #record_directories(gene_info)
+        # record_directories(gene_info)
         # Assuming gene_info is a list with a single dictionary, explore the format
-        #search_key_value(gene_info[0], 'Seq-interval_from')
+        # search_key_value(gene_info[0], 'Seq-interval_from')
         # Print the structure of gene_info[0]
-        #explore_structure(gene_info[0]['Entrezgene_locus'])
+        # explore_structure(gene_info[0]['Entrezgene_locus'])
 
     else:
         print(f"ERROR: No gene information found for {gene_name} in {species}. Check the names are correct.")
         sys.exit()
 
-    # Calculate region start and end based on the gene start and end coordinates +/- the user-provided adjustment values
-    requested_start_position = start - start_adjust
-    requested_end_position = end + end_adjust
+    if gene_oriented_adjustment and strand == 'reverse':
+        requested_start_position = start - end_adjust
+        requested_end_position = end + start_adjust
+    else:
+        # Calculate region start and end based on the gene start and end coordinates +/- the user-provided adjustment values
+        requested_start_position = start - start_adjust
+        requested_end_position = end + end_adjust
 
 
-    return accession_number, requested_start_position, requested_end_position, strand
+    return accession_number, requested_start_position, requested_end_position, strand, gene_ref_name
 
 
 # Function #3 - get list of genes and features in specified region
-def get_genes_in_region(accession, requested_start_position, requested_end_position, X=False):
+def get_genes_in_region(accession_number, requested_start_position, requested_end_position, X=False):
     # Retrieve GenBank record
-    handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
+    handle = Entrez.efetch(db="nuccore", id=accession_number, rettype="gbwithparts", retmode="text")
     record = SeqIO.read(handle, "genbank")
     handle.close()
 
@@ -207,10 +222,10 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
     start_position = start
     end_position = end
 
-    print(f"Specified region: {accession}:{start}-{end}")
+    print(f"Specified region: {accession_number}:{start}-{end}")
     print(f"Specified region length: {sequence_length}bp\n")
 
-    print("Finding features in region...\n")
+    print("Finding features in region...")
 
     # Prepare to collect genes and features
     genes_in_region, collected_features = [], []
@@ -237,6 +252,7 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
                     continue
             else:
                 print("Location coordinates in unexpected format") 
+                sys.exit()
 
         if collect_features:
             if (
@@ -282,7 +298,6 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
         # for collected_feature in collected_features:
         #    print(collected_feature)
         #    print("")
-
     return genes_in_region, collected_features, start_position, end_position, sequence_length
 
 
@@ -316,57 +331,47 @@ def reformat(collected_features):
         elif feature["type"] == "ncRNA":
             ncrna_list.extend(extract_features(feature))
 
-    # Generate ID number for mRNA transcript based on gene and transcriptID
-    gene_mapping = {}
-    transcriptid_mapping = {}
-    current_id = 1
-    for mrna in mrna_list:
-        gene = mrna['gene']
-        transcriptid = mrna['transcriptid']
-        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
-        firstkey = (gene)
-        if firstkey not in transcriptid_mapping and key not in gene_mapping:
-            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
-            current_id = 1
-            gene_mapping[key] = current_id
-            transcriptid_mapping[firstkey] = current_id
-        elif firstkey in transcriptid_mapping and key not in gene_mapping:
-            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
-            current_id = current_id + 1
-            gene_mapping[key] = current_id
-        mrna['ID']=gene_mapping[key]
+    # Dictionary to store coded_by_info values
+    coded_by_dict = {}
+    # Iterate over the collected_features list
+    for feature in collected_features:
+        transcript_id = feature['transcriptid']
+        if transcript_id.startswith('NP') or transcript_id.startswith('XP'):
+            # Fetch protein information
+            handle = Entrez.efetch(db="protein", id=transcript_id, retmode="xml")
+            protein_record = Entrez.read(handle)
+            handle.close()
 
-    # Generate ID number for CDS transcript based on gene and transcriptID
-    gene_mapping = {}
-    transcriptid_mapping = {}
-    current_id = 1
+            # Assuming protein_record is a list containing a single dictionary
+            protein_info = protein_record[0]
+
+            # Iterate over the feature table to find the 'coded_by' information
+            for feat in protein_info['GBSeq_feature-table']:
+                qualifiers = feat.get('GBFeature_quals', [])
+                for qualifier in qualifiers:
+                    if qualifier.get('GBQualifier_name') == 'coded_by':
+                        coded_by_info = qualifier.get('GBQualifier_value')
+                        # Split the value at ':' and take the first part
+                        coded_by_info = coded_by_info.split(':')[0]
+                        coded_by_dict[transcript_id] = coded_by_info  # Store coded_by_info
+                        break
+    #print(coded_by_dict)
+
     for cds in cds_list:
-        gene = cds['gene']
-        transcriptid = cds['transcriptid']
-        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
-        firstkey = (gene)
-        if firstkey not in transcriptid_mapping and key not in gene_mapping:
-            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
-            current_id = 1
-            gene_mapping[key] = current_id
-            transcriptid_mapping[firstkey] = current_id
-        elif firstkey in transcriptid_mapping and key not in gene_mapping:
-            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
-            current_id = current_id + 1
-            gene_mapping[key] = current_id
-        cds['ID']=gene_mapping[key]
-
-    #Now make the gene name + ID as the "transcript key" for pairing mRNAs and corresponding CDSs
+        transcript_id = cds['transcriptid']
+        coded_by_info = coded_by_dict.get(transcript_id)
+        if coded_by_info:
+            cds['coded_by'] = coded_by_info
 
     # Create a dictionary to organize entries by transcript and type
     organized_dict = defaultdict(lambda: {"mRNA": [], "CDS": []})
     # Iterate through the mRNA list and organize entries based on transcriptid
     for mrna_entry in mrna_list:
-        transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['ID']}"
+        transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['transcriptid']}"
         organized_dict[transcript_key]["mRNA"].append(mrna_entry)
     # Iterate through the CDS list and pair entries with the same transcriptid
     for cds_entry in cds_list:
-        transcript_key = f"{cds_entry['gene']}transcript{cds_entry['ID']}"
+        transcript_key = f"{cds_entry['gene']}transcript{cds_entry['coded_by']}"
         organized_dict[transcript_key]["CDS"].append(cds_entry)
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
@@ -490,7 +495,6 @@ def pipmaker(paired_list, ncrna_list, start_position):
     while i < len(result_text) - 1:
         current_line = result_text[i]
         next_line = result_text[i + 1]
-
         # Skip lines with '<' or '>'
         if (
             "<" in current_line
@@ -832,6 +836,7 @@ def gbgene(
     record_id,
     start_adjust,
     end_adjust, 
+    gene_oriented_adjustment,
     fasta_output_file,
     coordinates_output_file,
     X=False,
@@ -846,33 +851,36 @@ def gbgene(
     if flank not in ["in", "ex", None]:
         print("ERROR: invalid flank argument; must be 'in' or 'ex'")
         sys.exit()
-
+    
     # Get target gene record from Entrez
     gene_info = search_gene_info(species, gene_name)
 
     # Extract key information about the sequence region to be processed
-    accession_number, requested_start_position, requested_end_position, strand = process_gene_info(
-        gene_info, record_id, start_adjust, end_adjust, species, gene_name)
-
-    print("Finding features in region...")
+    accession_number, requested_start_position, requested_end_position, strand, gene_ref_name = process_gene_info(
+        gene_info, record_id, start_adjust, end_adjust, species, gene_name, gene_oriented_adjustment)
 
     # Get a list of genes and their features included in the sequence region
     genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
 
     # If no genes in genes list, terminate script
     if len(genes) == 0:
-        print("No genes found in region")
+        print("\nNo genes found in region. Terminating script\n")
         sys.exit()
 
-    print(f'\nGenes in the specified region: {genes}\n')
+    print(f'\nGenes in the specified region: {genes}')
 
     if flank:  
         new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank)
         genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, new_start, new_end, X)
 
+    # If no genes in genes list
+    if len(genes) == 0:
+        print("No genes found in region\n")
+        #sys.exit()
+        
     # If -fw argument used and the gene is on the reverse strand, force reverse complement
     if fw and strand == 'reverse':
-        print(f'{gene_name} is on the reverse strand, flipped automatically.\n')
+        print(f'{gene_ref_name} is on the reverse strand, flipped automatically.\n')
         apply_reverse_complement = True
 
     
@@ -903,36 +911,36 @@ def gbgene(
     if autoname and not flank:
         if not fasta_output_file:
             if not apply_reverse_complement:
-                fasta_output_file = f"{species}_{gene_name}_{start_position}-{end_position}.fasta.txt"
+                fasta_output_file = f"{species}_{gene_ref_name}_{start_position}-{end_position}.fasta.txt"
             else:
-                fasta_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}_revcomp.fasta.txt")
+                fasta_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}_revcomp.fasta.txt")
         if not coordinates_output_file:
             if not apply_reverse_complement:
-                coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}.annotation.txt")
             else:
-                coordinates_output_file = (f"{species}_{gene_name}_{start_position}-{end_position}_revcomp.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}_revcomp.annotation.txt")
     if autoname and (flank == "in"):
         if not fasta_output_file:
             if not apply_reverse_complement:
-                fasta_output_file = f"{species}_{gene_name}__{fgene1}-{fgene2}.fasta.txt"
+                fasta_output_file = f"{species}_{gene_ref_name}__{fgene1}-{fgene2}.fasta.txt"
             else:
-                fasta_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}_revcomp.fasta.txt")
+                fasta_output_file = (f"{species}_{gene_ref_name}__{fgene2}-{fgene1}_revcomp.fasta.txt")
         if not coordinates_output_file:
             if not apply_reverse_complement:
-                coordinates_output_file = (f"{species}_{gene_name}__{fgene1}-{fgene2}.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}__{fgene1}-{fgene2}.annotation.txt")
             else:
-                coordinates_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}_revcomp.annotation.txt")    
+                coordinates_output_file = (f"{species}_{gene_ref_name}__{fgene2}-{fgene1}_revcomp.annotation.txt")    
     if autoname and (flank == "ex"):
         if not fasta_output_file:
             if not apply_reverse_complement:
-                fasta_output_file = f"{species}_{gene_name}__{fgene1}-{fgene2}.ex.fasta.txt"
+                fasta_output_file = f"{species}_{gene_ref_name}__{fgene1}-{fgene2}.ex.fasta.txt"
             else:
-                fasta_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}.ex_revcomp.fasta.txt")
+                fasta_output_file = (f"{species}_{gene_ref_name}__{fgene2}-{fgene1}.ex_revcomp.fasta.txt")
         if not coordinates_output_file:
             if not apply_reverse_complement:
-                coordinates_output_file = (f"{species}_{gene_name}__{fgene1}-{fgene2}.ex.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}__{fgene1}-{fgene2}.ex.annotation.txt")
             else:
-                coordinates_output_file = (f"{species}_{gene_name}__{fgene2}-{fgene1}.ex_revcomp.annotation.txt") 
+                coordinates_output_file = (f"{species}_{gene_ref_name}__{fgene2}-{fgene1}.ex_revcomp.annotation.txt") 
 
     # Check if ".txt" is already at the end of the coordinates_output_file argument
     if coordinates_output_file and not coordinates_output_file.endswith(".txt"):
@@ -940,11 +948,11 @@ def gbgene(
   
     if apply_reverse_complement:
         formatted_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
-        message=f"Reversed coordinates saved to "
+        message=f"\nReversed coordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
     else:
-        message=f"Coordinates saved to "
+        message=f"\nCoordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
             
@@ -954,7 +962,7 @@ def gbgene(
                 coordinates_file.write(formatted_coordinates)
         print(f"{message}{coordinates_output_file}")
     else:
-        print("No coordinates output file specified")
+        print("\nNo coordinates output file specified")
 
     # Check if ".txt" is already at the end of the fasta_output_file argument
         if fasta_output_file and not fasta_output_file.endswith(".txt"):
@@ -970,7 +978,7 @@ def gbgene(
         else:
             print(f"Reverse complement DNA sequence saved to {fasta_output_file}")
     else:
-        print("No FASTA output file specified.")
+        print("No FASTA output file specified")
 
 
 def main():
@@ -987,6 +995,7 @@ def main():
     parser.add_argument("-r", "--record_id", type=int, default=0, help="Record ID number (default=0, the top match)")
     parser.add_argument("-sa", "--start_adjust", type=int, default=0, help="Number to subtract from the start coordinate (default: 0)")
     parser.add_argument("-ea", "--end_adjust", type=int, default=0, help="Number to add to the end coordinate (default: 0)")
+    parser.add_argument("-goa", "--gene_oriented_adjustment", action="store_true", default=False, help="Make start/end adjustments follow gene orientation, not assembly orientation")
     parser.add_argument("-fasta", "--fasta_output_file", default=None, help="Output file name for the DNA sequence in VISTA format")
     parser.add_argument("-anno", "--coordinates_output_file", default=None, help="Output file name for the gene coordinates")
     parser.add_argument("-x", action="store_true", default=False, help="Include predicted (not manually curated) transcripts in results")
@@ -1008,6 +1017,7 @@ def main():
             args.record_id,
             args.start_adjust,
             args.end_adjust,
+            args.gene_oriented_adjustment,
             args.fasta_output_file,
             args.coordinates_output_file,
             args.x,

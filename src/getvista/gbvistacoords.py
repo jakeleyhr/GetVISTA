@@ -14,6 +14,7 @@ import os
 import re
 import argparse
 import sys
+from shutil import get_terminal_size
 from collections import defaultdict
 import configparser
 #import http.client
@@ -45,6 +46,17 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
             config.write(configfile)
         print(f"Email address set: '{Entrez.email}'. This will be used for all future queries. \nYou can change the saved email address using 'gbemail -update'")
 
+    # Print run header
+    terminalwidth = get_terminal_size()[0]
+    nameswidth = len(f" {accession} {requested_start_position}-{requested_end_position} ")
+    leftindent = ((terminalwidth-nameswidth)//2)
+    print("")
+    print("▒"*terminalwidth+
+          "▒"*leftindent+ 
+          f" {accession} {requested_start_position}-{requested_end_position} "+ 
+          "▒"*(terminalwidth-leftindent-nameswidth)+
+          "▒"*terminalwidth)
+    
     # Retrieve GenBank record
     handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
     record = SeqIO.read(handle, "genbank")
@@ -71,12 +83,10 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
     sequence_length = end - start + 1
 
     print(f"Specified region: {accession}:{start}-{end}")
-    print(f"Specified region length: {sequence_length}bp")
-    print("")
+    print(f"Specified region length: {sequence_length}bp\n")
     
     print("Finding features in region...")
-    print("")
-
+ 
     # Prepare to collect genes and features
     genes_in_region, collected_features = [], []
     collect_features = False
@@ -102,6 +112,7 @@ def get_genes_in_region(accession, requested_start_position, requested_end_posit
                     continue
             else:
                 print("Location coordinates in unexpected format")
+                sys.exit()
 
         if collect_features:
             if (
@@ -181,61 +192,50 @@ def reformat(collected_features):
         elif feature["type"] == "ncRNA":
             ncrna_list.extend(extract_features(feature))
 
-    # Generate ID number for mRNA transcript based on gene and transcriptID
-    gene_mapping = {}
-    transcriptid_mapping = {}
-    current_id = 1
-    for mrna in mrna_list:
-        gene = mrna['gene']
-        transcriptid = mrna['transcriptid']
-        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
-        firstkey = (gene)
-        if firstkey not in transcriptid_mapping and key not in gene_mapping:
-            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
-            current_id = 1
-            gene_mapping[key] = current_id
-            transcriptid_mapping[firstkey] = current_id
-        elif firstkey in transcriptid_mapping and key not in gene_mapping:
-            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
-            current_id = current_id + 1
-            gene_mapping[key] = current_id
-        mrna['ID']=gene_mapping[key]
+    # Dictionary to store coded_by_info values
+    coded_by_dict = {}
+    # Iterate over the collected_features list
+    for feature in collected_features:
+        transcript_id = feature['transcriptid']
+        if transcript_id.startswith('NP') or transcript_id.startswith('XP'):
+            # Fetch protein information
+            handle = Entrez.efetch(db="protein", id=transcript_id, retmode="xml")
+            protein_record = Entrez.read(handle)
+            handle.close()
 
-    # Generate ID number for CDS transcript based on gene and transcriptID
-    gene_mapping = {}
-    transcriptid_mapping = {}
-    current_id = 1
+            # Assuming protein_record is a list containing a single dictionary
+            protein_info = protein_record[0]
+
+            # Iterate over the feature table to find the 'coded_by' information
+            for feat in protein_info['GBSeq_feature-table']:
+                qualifiers = feat.get('GBFeature_quals', [])
+                for qualifier in qualifiers:
+                    if qualifier.get('GBQualifier_name') == 'coded_by':
+                        coded_by_info = qualifier.get('GBQualifier_value')
+                        # Split the value at ':' and take the first part
+                        coded_by_info = coded_by_info.split(':')[0]
+                        coded_by_dict[transcript_id] = coded_by_info  # Store coded_by_info
+                        break
+    #print(coded_by_dict)
+
     for cds in cds_list:
-        gene = cds['gene']
-        transcriptid = cds['transcriptid']
-        key = (gene, transcriptid) # Use both gene name and transcriptid as the key
-        firstkey = (gene)
-        if firstkey not in transcriptid_mapping and key not in gene_mapping:
-            # If both the gene and the combiantion of gene and transcriptid haven't appeared earlier, reset ID count to 1
-            current_id = 1
-            gene_mapping[key] = current_id
-            transcriptid_mapping[firstkey] = current_id
-        elif firstkey in transcriptid_mapping and key not in gene_mapping:
-            # If the gene has appeared before but not the combination of gene and transcriptid, add 1 to ID count
-            current_id = current_id + 1
-            gene_mapping[key] = current_id
-        cds['ID']=gene_mapping[key]
-
-    #Now make the gene name + ID as the "transcript key" for pairing mRNAs and corresponding CDSs
+        transcript_id = cds['transcriptid']
+        coded_by_info = coded_by_dict.get(transcript_id)
+        if coded_by_info:
+            cds['coded_by'] = coded_by_info
 
     # Create a dictionary to organize entries by transcript and type
     organized_dict = defaultdict(lambda: {"mRNA": [], "CDS": []})
     # Iterate through the mRNA list and organize entries based on transcriptid
     for mrna_entry in mrna_list:
-        transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['ID']}"
+        transcript_key = f"{mrna_entry['gene']}transcript{mrna_entry['transcriptid']}"
         organized_dict[transcript_key]["mRNA"].append(mrna_entry)
     # Iterate through the CDS list and pair entries with the same transcriptid
     for cds_entry in cds_list:
-        transcript_key = f"{cds_entry['gene']}transcript{cds_entry['ID']}"
+        transcript_key = f"{cds_entry['gene']}transcript{cds_entry['coded_by']}"
         organized_dict[transcript_key]["CDS"].append(cds_entry)
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
-
 
     # Create a mapping of unique ncRNA transcriptids to numbers
     transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
@@ -551,8 +551,7 @@ def useflanks(collected_features, start_position, end_position, flank):
     input_region_end = end_position
     sequence_length = (input_region_end - input_region_start) + 1
 
-    print(f"Specified sequence length: {sequence_length}bp")
-    print("")
+    print(f"Specified sequence length: {sequence_length}bp\n")
 
     gene_locations = {}
 
@@ -689,7 +688,7 @@ def graphic(formatted_coordinates, sequence_length, X):
 
     # Combine adjacent directionality markers
     genomic_map_combined = ''.join(genomic_map).replace("<>", "#").replace("><", "#").replace("<<", "#").replace(">>", "#")
-    print(f"\nGraphical representation of specified sequence region:")
+    print(f"Graphical representation of specified sequence region:")
     print(genomic_map_combined)
 
 
@@ -726,18 +725,17 @@ def gbcoords(
     # Get a list of genes and their features included in the sequence region
     genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
 
-    # If no genes in genes list, terminate script
-    if len(genes) == 0:
-        print("No genes found in region")
-        sys.exit()
-
     print(f'\nGenes in the specified region: {genes}\n')
 
     if flank:  
         new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank)
         genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, new_start, new_end, X)
 
-    
+    # If no genes in genes list
+    if len(genes) == 0:
+        print("No genes found in region\n")
+        #sys.exit()
+
     # Get 2 reformatted lists of genes and features: 1 for ncRNAs, and 1 for paired mRNA/CDS features
     ncrna_list, paired_list = reformat(collected_features)
     # print("Features in the specified region:")
@@ -745,6 +743,7 @@ def gbcoords(
     # print("List of ncRNAs:", ncrna_list)
     # Convert the lists of features into the final pipmaker format
     coordinates = pipmaker(paired_list, ncrna_list, start_position)
+
     # If -nocut argument is included, continue. If not, cut the ends to remove coordinates out of range.
     if nocut is False:
         coordinates = cut(coordinates, sequence_length)
@@ -799,11 +798,11 @@ def gbcoords(
   
     if apply_reverse_complement:
         formatted_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
-        message=f"Reversed coordinates saved to "
+        message=f"\nReversed coordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
     else:
-        message=f"Coordinates saved to "
+        message=f"\nCoordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
             
@@ -813,7 +812,7 @@ def gbcoords(
                 coordinates_file.write(formatted_coordinates)
         print(f"{message}{coordinates_output_file}")
     else:
-        print("No coordinates output file specified")
+        print("\nNo coordinates output file specified")
 
     # Check if ".txt" is already at the end of the fasta_output_file argument
         if fasta_output_file and not fasta_output_file.endswith(".txt"):
@@ -829,7 +828,7 @@ def gbcoords(
         else:
             print(f"Reverse complement DNA sequence saved to {fasta_output_file}")
     else:
-        print("No FASTA output file specified.")
+        print("No FASTA output file specified")
 
 
 def main():
