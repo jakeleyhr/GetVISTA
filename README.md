@@ -9,11 +9,14 @@ Query Ensembl or GenBank to obtain genomic information in VISTA format. Useful f
 * **emailaddress.py**: check and update the email address used to make GenBank Entrez queries
 * **version_check.py**: check package version is up to date
 
-<img src="https://github.com/jakeleyhr/GetVISTA/assets/154226340/41d2c750-5241-4962-9c00-8a7b973bb1ef" width="800">
+<img src="https://github.com/jakeleyhr/GetVISTA/assets/154226340/41d2c750-5241-4962-9c00-8a7b973bb1ef" width="800"> \
+\
 [mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) is a popular web-based tool for multi-species sequence conservation analyses, and as it is particularly sensitive it can be used to identify conserved non-coding elements. Especially for the analysis of intergenic sequences, mVISTA requires two types of files as inputs from each species: the relevant DNA sequence in FASTA format, and an [annotation file in pipmaker format](https://genome.lbl.gov/vista/mvista/instructions.shtml#anno) that contains the _relative_ sequence coordinates of the features (UTRs and exons) of any genes in the sequence. \
-The reccommended way (and only way as far as I know) to get these paired sequence and annotation files is to use the [Ensembl genome browser](https://www.ensembl.org/index.html) website interface to navigate to your region of interest, then export and save the two files. This works well, but is quite time-consuming and fiddly to go through all the steps. The Ensembl genome browser also only contains a fraction of the sequenced genome that exist in other databases e.g. NCBI's GenBank, so limits the species it's possible to actually use in the mVISTA analyses (with an annotation file). 
-&nbsp;
+\
+The reccommended way (and only way as far as I know) to get these paired sequence and annotation files is to use the [Ensembl genome browser](https://www.ensembl.org/index.html) website interface to navigate to your region of interest, then export and save the two files. This works well, but is quite time-consuming and fiddly to go through all the steps. The Ensembl genome browser also only contains a fraction of the sequenced genome that exist in other databases e.g. NCBI's GenBank, which limits the species it's possible to actually use in the mVISTA analyses (with an annotation file). \
+\
 I created this package to address these issues, providing a fast and user-friendly way to obtain pairs of sequence and annotation files from the command line. **No interfacing with websites or coding knowledge is required!** \
+\
 After installing the package, you can use the various modules to search either the Ensembl genome browser database or the GenBank database for sequences by gene name or genomic coordinates, and even perform more advanced operations such as obtaining gene sequences with specific flanking sequences, including by specifying upstream or downstream genes that should represent the region boundaries. Relevant information is printed to the terminal, including simple visualisations, and the FASTA and pipmaker files are saved as .txt files in your working directory. With a single command and a matter of seconds, you can easily obtain homologous sequence regions from multiple species that are immediately ready to upload to the mVISTA web interface.
 &nbsp;
 
@@ -27,6 +30,8 @@ https://github.com/jakeleyhr/GetVISTA
 * packaging
 * biopython
 * configparser
+* fuzzywuzzy
+* python_Levenshtein
 
 ## Quick start guide
 * Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
