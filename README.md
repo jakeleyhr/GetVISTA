@@ -4,13 +4,18 @@ Query Ensembl or GenBank to obtain genomic information in VISTA format. Useful f
 * **gbvistagene.py**: query _GenBank_ database with species and _gene name_
 * **envistacoords.py**: query _Ensembl_ database with species and _genomic coordinates_
 * **gbvistacoords.py**: query _GenBank_ database with species and _genomic coordinates_
+* **enspecies.py**: query _Ensembl_ database with complete or partial species common name, binomial name, or taxon to return binomial names (to use in engene or encoords modules)
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
 * **emailaddress.py**: check and update the email address used to make GenBank Entrez queries
 * **version_check.py**: check package version is up to date
 
 <img src="https://github.com/jakeleyhr/GetVISTA/assets/154226340/41d2c750-5241-4962-9c00-8a7b973bb1ef" width="800">
-
-
+[mVISTA](https://genome.lbl.gov/vista/mvista/submit.shtml) is a popular web-based tool for multi-species sequence conservation analyses, and as it is particularly sensitive it can be used to identify conserved non-coding elements. Especially for the analysis of intergenic sequences, mVISTA requires two types of files as inputs from each species: the relevant DNA sequence in FASTA format, and an [annotation file in pipmaker format](https://genome.lbl.gov/vista/mvista/instructions.shtml#anno) that contains the _relative_ sequence coordinates of the features (UTRs and exons) of any genes in the sequence. \
+The reccommended way (and only way as far as I know) to get these paired sequence and annotation files is to use the [Ensembl genome browser](https://www.ensembl.org/index.html) website interface to navigate to your region of interest, then export and save the two files. This works well, but is quite time-consuming and fiddly to go through all the steps. The Ensembl genome browser also only contains a fraction of the sequenced genome that exist in other databases e.g. NCBI's GenBank, so limits the species it's possible to actually use in the mVISTA analyses (with an annotation file). 
+&nbsp;
+I created this package to address these issues, providing a fast and user-friendly way to obtain pairs of sequence and annotation files from the command line. **No interfacing with websites or coding knowledge is required!** \
+After installing the package, you can use the various modules to search either the Ensembl genome browser database or the GenBank database for sequences by gene name or genomic coordinates, and even perform more advanced operations such as obtaining gene sequences with specific flanking sequences, including by specifying upstream or downstream genes that should represent the region boundaries. Relevant information is printed to the terminal, including simple visualisations, and the FASTA and pipmaker files are saved as .txt files in your working directory. With a single command and a matter of seconds, you can easily obtain homologous sequence regions from multiple species that are immediately ready to upload to the mVISTA web interface.
+&nbsp;
 
 ## Author
 Jake Leyhr ([@jakeleyhr](https://twitter.com/JakeLeyhr)) \
@@ -122,7 +127,7 @@ MIR1289-1-201
 Coordinates saved to human_gdf5.annotation.txt
 DNA sequence saved to human_gdf5.fasta.txt
 ```
-The species name has to be entered in a form recognised by Ensembl, which includes binomial and one-word common names. For species with multi-word species names such as Spotted Gar, the binomial name must be used with an underscore i.e. Lepisosteus_oculatus. Multiple species names can be entered, not just one, as will be explained later in this document.
+The species name has to be entered in a form recognised by Ensembl, which includes binomial and one-word common names. For species with multi-word species names such as Spotted Gar, the binomial name must be used with an underscore i.e. Lepisosteus_oculatus. Multiple species names can be entered, not just one, as will be explained later in this document. The **enspecies** module makes finding binomial names of species in the Ensembl database easy, as will be explained later in this document.
 
 Two text files are generated in the working directory - the first contains the coordinates of the exons and UTRs of all genes contained within the genomic region selected in pipmaker format, and the second contains the DNA sequence of the selected region in fasta format. By using the **-autoname** flag, the names of these files were automatically generated from the species and gene name inputs.
 
@@ -638,7 +643,7 @@ Dpysl5-203
 Coordinates saved to mouse_5_30810000-30890000.annotation.txt
 DNA sequence saved to mouse_5_30810000-30890000.fasta.txt
 ```
-As the coordinates are specified in place of the gene name, the **-sa**, **-ea**, and **-fw** arguments in engene are absent from encoords. Also, as the chromosomes and coordinates are not homologous between species, there is no option to enter multiple species names as in engene.
+As the coordinates are specified in place of the gene name, the **-sa**, **-ea**, **-goa**, and **-fw** arguments in engene are absent from encoords. Also, as the chromosomes and coordinates are not homologous between species, there is no option to enter multiple species names as in engene.
 
 
 &nbsp;
@@ -683,12 +688,89 @@ $ gbcoords -a NC_000020 -c 500000-600000
 
 
 
+&nbsp;
+&nbsp;
+# enspecies usage
+```
+$ enspecies -h
+usage: enspecies [-h] [-cn COMMON_NAME] [-ln LATIN_NAME] [-tax TAXON]
+
+List species names from Ensembl by common name, latin binomial name, or taxon.
+
+options:
+  -h, --help            show this help message and exit
+  -cn COMMON_NAME, --common_name COMMON_NAME
+                        Search for species by their common name or part of it (e.g. fly)
+  -ln LATIN_NAME, --latin_name LATIN_NAME
+                        Search for species by their latin binomial names or part of it 
+                        (e.g. melano)
+  -tax TAXON, --taxon TAXON
+                        Search for species by taxon name (e.g. Carnivora)
+```
+This accessory module is intended to be used to quickly retrieve the latin binomial names of species in the Ensembl database, and also to search for species in the database by taxon.
+For example, if you want to search for the latin names of the 'flycatcher' by this common name, use **-cn**:
+```
+$ enspecies -cn flycatcher
+
+List of Matching Species in Ensembl:
+Collared flycatcher -> ficedula_albicollis
+```
+In the same way, you can search for any species that contain the string of letters "fly" in their name: 
+```
+$ enspecies -cn fly
+
+List of Matching Species in Ensembl:
+Collared flycatcher -> ficedula_albicollis
+Fruit fly -----------> drosophila_melanogaster
+large flying fox ----> pteropus_vampyrus
+```
+If you mispell a name, the module returns the closest matches to the query. For example, if I mispelled whale as while:
+```
+$ enspecies -cn while
+
+Finding up to 3 closest matches:
+sperm whale --> physeter_catodon
+Blue whale ---> balaenoptera_musculus
+beluga whale -> delphinapterus_leucas
+```
+
+If you prefer to search by a string of letters in the latin binomial name, use **-ln**:
+```
+$ enspecies -ln melano
+
+List of Matching Species in Ensembl:
+Fruit fly ---> drosophila_melanogaster
+giant panda -> ailuropoda_melanoleuca
+round goby --> neogobius_melanostomus
+silver-eye --> zosterops_lateralis_melanops
+```
+
+Finally, you can search the Ensembl database for all species contained within a taxon using **-tax**. This can take a few seconds to run, especially for large taxa, and the taxon name must be spelled correctly. For example:
+```
+$ enspecies -tax felidae
+
+List of Species in Ensembl:
+Canada lynx -> lynx_canadensis
+Cat ---------> felis_catus
+Leopard -----> panthera_pardus
+Lion --------> panthera_leo
+Tiger -------> panthera_tigris_altaica
+
+ 5 species records in felidae
+```
+In all these cases, the bionomial name on the right can be used as the species input for the engene or encoords modules.
+
+
+
+
+
 
 
 &nbsp;
 &nbsp;
 # gbrecords usage
 ```
+$ gbrecord -h
 usage: gbrecord [-h] -s SPECIES -g GENE_NAME
 
 Query the GenBank database with a species and gene name to obtain a list of different 
