@@ -7,7 +7,7 @@ Query Ensembl or GenBank to obtain genomic information in VISTA format. Useful f
 * **enspecies.py**: query _Ensembl_ database with complete or partial species common name, binomial name, or taxon to return binomial names (to use in engene or encoords modules)
 * **gbgenerecord.py**: query _GenBank_ with database species and _gene name_, get list of records to select (to choose in gbgene module)
 * **emailaddress.py**: check and update the email address used to make GenBank Entrez queries
-* **version_check.py**: check package version is up to date
+* **version_check.py**: automatically check package version is up to date
 
 <img src="https://github.com/jakeleyhr/GetVISTA/assets/154226340/41d2c750-5241-4962-9c00-8a7b973bb1ef" width="800"> \
 \
