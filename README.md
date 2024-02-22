@@ -43,7 +43,7 @@ conda create -n getvistaenv python=3.11
 ```
 conda activate getvistaenv
 ```
-* Install the package:
+* Install the package (this automatically installs all dependencies as well):
 ```
 pip install getvista
 ```
@@ -223,6 +223,8 @@ MIR1289-1-201
 
 Coordinates saved to annotationfilename.txt
 DNA sequence saved to human_gdf5.fasta.txt
+
+Completed in 1.3 seconds
 ```
 ## -sa and -ea
 Two additional arguments can be used to adjust the start (**-sa**) and end (**-ea**) coordinates beyond the gene start and end. For example, to extract the sequence and annotations for the human gdf5 gene plus an additional 50,000bp from the 5' flank and an additional 20,000bp from the 3' flank (strand direction relative to the assembly, NOT the gene):
@@ -936,7 +938,7 @@ The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompte
 ## Notes
 * Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried with engene or encoords is 5Mb. Requests above this limit will fail.
 * Requests to GenBank with gbgene, gbcoords, or gbrecord sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords or gbrecord, or a failure with no information when running gbgene, try running the command once or twice again, and the query should go through.
-* I have performed most testing of the gb scripts using vertebrates with unambigous gene symbols. They seem to work well with species and genes with curated genomes, but I cannot guarantee it will work with other types of records.
+* I have performed most testing of the gb scripts using vertebrates with unambiguous gene symbols. They seem to work well with species and genes with curated genomes, but I cannot guarantee it will work with other types of records.
 * In the graphical representation, if two or more gene transcripts have identical start and end coordinates, only one of the transcripts will be visualised.
 
 ## Bugs
