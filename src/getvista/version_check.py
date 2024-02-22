@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+
+"""
+File: version_check.py
+Author: Jake Leyhr
+GitHub: https://github.com/jakeleyhr/GetVISTA/
+Date: February 2024
+Description: automatically check package version is up to date
+"""
+# Import dependencies
 import importlib.metadata
 import requests
 from packaging import version

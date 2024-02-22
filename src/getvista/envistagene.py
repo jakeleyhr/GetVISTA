@@ -5,7 +5,8 @@ File: envistagene.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
 Date: February 2024
-Description: Query the Ensembl database with species and gene name to obtain FASTA file and gene feature coordinates in pipmaker format
+Description: Query the Ensembl database with species and gene name to obtain FASTA file \
+    and gene feature coordinates in pipmaker format
 """
 
  # Import dependencies
@@ -14,6 +15,7 @@ import json
 import time
 import argparse
 import requests
+import time
 from shutil import get_terminal_size
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -73,7 +75,7 @@ class EnsemblRestClient(object):
             else:
                 sys.stderr.write('ERROR: Request failed for {0}: Status code: {1.code} Reason: {1.reason}\n'.format(endpoint, e))
                 print('Check species and/or gene name')
-                sys.exit()
+                #sys.exit()
         return data
 
     def get_genes_in_genomic_coordinates(self, species, genomic_coordinates):
@@ -105,7 +107,8 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
     else:
         print(f"ERROR: Failed to retrieve gene information. Status code: {response.status_code}")
         print("Check species and gene name are correct.")
-        sys.exit()
+        return
+        #sys.exit()
     
     # Get strand information:
     strandint = gene_info['strand']
@@ -133,7 +136,8 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
 
     if (end - start + 1) > 5000000:
         print("ERROR: Query sequence must be under 5Mb")
-        sys.exit()
+        return
+        #sys.exit()
     
     # Ensembl REST API endpoint for DNA sequences in FASTA format
     url = f"https://rest.ensembl.org/sequence/region/{species}/{genomic_coordinates}?format=fasta" 
@@ -148,7 +152,7 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
     print(f"{species} {gene_name} coordinates: {gene_info['seq_region_name']}:{gene_start_coordinate}-{gene_end_coordinate}")
     print(f"{species} {gene_name} is on {strand} strand")
     print(f"{species} {gene_name} sequence length: {gene_end_coordinate-gene_start_coordinate+1}bp")
-    print(f"Specified coordinates: {genomic_coordinates}")
+    print(f"\nSpecified coordinates: {genomic_coordinates}")
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
@@ -157,7 +161,8 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
     else:
         print(f"Error: Unable to retrieve DNA sequence. Status code: {response.status_code}")
         print(f"Response content: {response.text}")
-        sys.exit()
+        return
+        #sys.exit()
     
     return genomic_coordinates, fasta_lines, strand, gene_ref_name
 
@@ -192,6 +197,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
 
                 if filter_type == 'all' or ('is_canonical' in transcript and transcript['is_canonical'] == 1):
                     strand_indicator = ">" if gene_info['strand'] == 1 else "<"
+                    strand = "+" if gene_info['strand'] == 1 else "-"
                     start_position = transcript.get('start') - input_region_start + new_start
                     end_position = transcript.get('end') - input_region_start + new_start
                     transcript_name = transcript.get('display_name', transcript['id'])
@@ -201,7 +207,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                     elif start_position > sequence_length and end_position > sequence_length:
                         print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
                     else:
-                        print(transcript_name)
+                        print(f"{transcript_name} ({strand})")
 
                     if nocut == False:
                         if not ((start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length)):
@@ -257,7 +263,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                                         #print(f"utr end: {utr_end}")
                                         # if CDS and UTR exon is 5' cut off, make sure UTR takes priority
                                         if end == utr_end and utr_start<start:
-                                            print('true')
+                                            #print('cutoff')
                                             start = 0
                                             end = 0
                                             utr_start=1
@@ -378,14 +384,20 @@ def useflanks(species, genes, genomic_coordinates, flank):
     print(f"Specified sequence length: {sequence_length}bp")
     print("\nGenes included in region:")
     genes_data = []  # Initialize an empty list to store gene data
+    #print(genes)
     for gene in genes:
         gene_id = gene['id']
+        strand = gene['strand']
+        if strand == 1:
+            strand = '+'
+        elif strand == -1:
+            strand = '-'
         try:
             gene_name = gene['external_name']
         except KeyError:
             gene_name=gene_id
 
-        print(gene_name)
+        print(f"{gene_name} ({strand})")
 
         # Store gene data as a dictionary
         gene_data = {
@@ -414,7 +426,7 @@ def useflanks(species, genes, genomic_coordinates, flank):
             gene_end_positions[gene_name] = start_position-1
     while True:      
         # Prompt the user for input
-        gene_name_input1 = input("Please enter the first gene name (case sensitive): ")
+        gene_name_input1 = input("\n> Enter the first gene name (case sensitive): ")
         # Check if the gene name is present in the dictionary
         if gene_name_input1 in gene_start_positions:
             start_coordinate = gene_start_positions[gene_name_input1]
@@ -424,14 +436,14 @@ def useflanks(species, genes, genomic_coordinates, flank):
                 print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}")
             break
         else:
-            choice = input("Invalid input. Do you want to try again? (yes/no): ")
-            if choice.lower() != "yes":
+            choice = input("Invalid input. Do you want to try again? (y/n): ")
+            if choice.lower() != "y":
                 print("Terminating the script.")
                 sys.exit()  # Terminate the loop if the user chooses not to try again
 
     while True:      
         # Prompt the user for input
-        gene_name_input2 = input("Please enter the second gene name (case sensitive): ")
+        gene_name_input2 = input("\n> Enter the second gene name (case sensitive): ")
         # Check if the gene name is present in the dictionary
         if gene_name_input2 in gene_end_positions:
             end_coordinate = gene_end_positions[gene_name_input2]
@@ -441,11 +453,19 @@ def useflanks(species, genes, genomic_coordinates, flank):
                 print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}")
             break
         else:
-            choice = input("Invalid input. Do you want to try again? (yes/no): ")
-            if choice.lower() != "yes":
+            choice = input("Invalid input. Do you want to try again? (y/n): ")
+            if choice.lower() != "y":
                 print("Terminating the script.")
                 sys.exit()  # Terminate the loop if the user chooses not to try again
 
+    new_start = start_coordinate
+    new_end = end_coordinate
+
+    if new_start > new_end:
+        print("\nERROR: start coordinate cannot be larger than end coordinate")
+        return # Force exit the function
+        #sys.exit()
+    
     new_genomic_coordinates = (f'{chrom}:{start_coordinate}-{end_coordinate}')      
     print(f'\nNew genomic coordinates: {new_genomic_coordinates}')
 
@@ -465,7 +485,8 @@ def useflanks(species, genes, genomic_coordinates, flank):
     else:
         print(f"Error: Unable to retrieve DNA sequence. Status code: {response.status_code}")
         print(f"Response content: {response.text}")
-        sys.exit()
+        return
+        #sys.exit()
 
     return new_genomic_coordinates, gene_name_input1, gene_name_input2, fasta_lines
 
@@ -531,6 +552,7 @@ def graphic(coordinates_content, sequence_length, all_transcripts):
 
     # Combine adjacent directionality markers
     genomic_map_combined = ''.join(genomic_map).replace("<>", "#").replace("><", "#").replace("<<", "#").replace(">>", "#")
+    genomic_map_combined = "5'-" + genomic_map_combined + "-3'"
     print(f"\nGraphical representation of specified sequence region:")
     print(genomic_map_combined)
 
@@ -553,11 +575,11 @@ def engene(
 ):
     # Print run header
     terminalwidth = get_terminal_size()[0]
-    nameswidth = len(f" {species} {gene_name} ")
+    nameswidth = len(f" engene: {species} {gene_name} ")
     leftindent = ((terminalwidth-nameswidth)//2)
     print("▒"*terminalwidth+
           "▒"*leftindent+ 
-          f" {species} {gene_name} "+ 
+          f" engene: {species} {gene_name} "+ 
           "▒"*(terminalwidth-leftindent-nameswidth)+
           "▒"*terminalwidth)
     
@@ -572,7 +594,7 @@ def engene(
     # If no genes in genes list, terminate script
     if len(genes) == 0:
         print("\nNo genes found in region. Terminating script\n")
-        sys.exit()
+        #sys.exit()
 
     if flank:  
         genomic_coordinates, fgene1, fgene2, fasta_lines = useflanks(species, genes, genomic_coordinates, flank)
@@ -677,7 +699,7 @@ def engene(
                 id=str(header_line), 
                 description="",
                 )
-            print(f"DNA sequence saved to {fasta_output_file}\n")
+            print(f"DNA sequence saved to {fasta_output_file}")
         else:
             # Reverse complement the sequence
             reverse_complement_sequence = str(dna_sequence.reverse_complement())
@@ -689,11 +711,11 @@ def engene(
                 id=reversed_header_line,
                 description="",
             )
-            print(f"Reverse complement DNA sequence saved to {fasta_output_file}\n")
+            print(f"Reverse complement DNA sequence saved to {fasta_output_file}")
         # Write to file
         SeqIO.write(fasta_record, f"{fasta_output_file}", "fasta")   
     else:
-        print("No FASTA output file specified\n") # Print to notify user neither sequence specified as output
+        print("No FASTA output file specified") # Print to notify user neither sequence specified as output
 
 
 def main():
@@ -719,30 +741,54 @@ def main():
     parser.add_argument("-flank", default=None, help="Select 2 genes to specify new range. 'in' to include the flanking genes, 'ex' to exclude them")
     parser.add_argument("-vis", action="store_true", default=False, help="Display graphical representation of the sequence in the terminal")
 
-
     # Parse the command-line arguments
     args = parser.parse_args()
 
+    if args.gene_oriented_adjustment is True and (args.start_adjust == 0 and args.end_adjust == 0):
+        print("WARNING: -goa applied without a start or end adjustment. Did you mean to add an adjustment?")
+
     # Loop through multi-species inputs
+    failed_species = []
+    start_time = time.time()
     for species in args.species:
+        try:
         # Pass arguments in the correct order
-        engene(
-            species, 
-            args.gene_name, 
-            args.start_adjust, 
-            args.end_adjust, 
-            args.gene_oriented_adjustment,
-            args.fasta_output_file, 
-            args.coordinates_output_file, 
-            args.all_transcripts, 
-            args.nocut, 
-            args.rev,
-            args.autoname,
-            args.fw,
-            args.flank,
-            args.vis,
-        )
-        
+            engene(
+                species, 
+                args.gene_name, 
+                args.start_adjust, 
+                args.end_adjust, 
+                args.gene_oriented_adjustment,
+                args.fasta_output_file, 
+                args.coordinates_output_file, 
+                args.all_transcripts, 
+                args.nocut, 
+                args.rev,
+                args.autoname,
+                args.fw,
+                args.flank,
+                args.vis,
+            )
+        except Exception:
+            failed_species.append(species)
+    
+    end_time = time.time()
+    
+    if len(args.species) > 1:
+        print(f"\nAll completed in {round(end_time - start_time, 1)} seconds")
+    else:
+        print(f"\nCompleted in {round(end_time - start_time, 1)} seconds")  
+    if len(failed_species) > 0:
+        terminalwidth = get_terminal_size()[0]
+        message = f" Failed to process species: {failed_species} "
+        nameswidth = len(message)
+        leftindent = ((terminalwidth-nameswidth)//2)
+        print("\n" + 
+              "!"*terminalwidth+
+              "!"*leftindent+ 
+              f"{message}"+ 
+              "!"*(terminalwidth-leftindent-nameswidth)+
+              "!"*terminalwidth)
 
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@
 File: gbvistagene.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
-Date: January 2024
+Date: February 2024
 Description: Query the GenBank database with a species and gene name \
     to obtain FASTA file and gene feature coordinates in pipmaker format
 """
@@ -14,6 +14,7 @@ import os
 import re
 import argparse
 import sys
+import time
 from shutil import get_terminal_size
 from collections import defaultdict
 import configparser
@@ -82,11 +83,11 @@ def search_gene_info(species, gene_name):
 
     # Print run header
     terminalwidth = get_terminal_size()[0]
-    nameswidth = len(f" {species} {gene_name} ")
+    nameswidth = len(f" gbgene: {species} {gene_name} ")
     leftindent = ((terminalwidth-nameswidth)//2)
     print("▒"*terminalwidth+
           "▒"*leftindent+ 
-          f" {species} {gene_name} "+ 
+          f" gbgene: {species} {gene_name} "+ 
           "▒"*(terminalwidth-leftindent-nameswidth)+
           "▒"*terminalwidth)
     
@@ -133,7 +134,7 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         except KeyError:
             print("Locus: None available")
         try:
-            strandsign = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]["Seq-loc_int"]["Seq-interval"]["Seq-interval_strand"]["Na-strand"].attributes['value']
+            strandsign = gene_info[0]["Entrezgene_locus"][0]["Gene-commentary_seqs"][0]["Seq-loc_int"]["Seq-interval"]["Seq-interval_strand"]["Na-strand"].attributes['value']
             if strandsign == 'plus':
                 strand = 'forward'
             elif strandsign == 'minus':
@@ -141,13 +142,24 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
             print(f"Strand: {strand}")
         except KeyError:
             print("Strand: None available")
-        except IndexError:
-            print(f"ERROR: Record_ID #{record_id} not found. Try a different value")
-            sys.exit()
-
+            return
+        
+        #print(gene_info)
+        print(f"\nUsing record {record_id}:")
+        try: 
+            org = gene_info[0]["Entrezgene_source"]["BioSource"]["BioSource_org"]["Org-ref"]["Org-ref_taxname"]
+            common = gene_info[0]["Entrezgene_source"]["BioSource"]["BioSource_org"]["Org-ref"]["Org-ref_common"]
+            print(f"Organism: {common} ({org})")
+        except:
+            pass
         try:
             assembly = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_label"]
+            print(f"Assembly: {assembly}")
+        except:
+            pass
+        try:
             accession_number = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_accession"]
+            print(f"Accession: {accession_number}")
             start = (int(
                 gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]
                 ["Seq-loc_int"]["Seq-interval"]["Seq-interval_from"]
@@ -155,17 +167,15 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
             end = (int(
                     gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_seqs"][0]
                     ["Seq-loc_int"]["Seq-interval"]["Seq-interval_to"]
-            ) + 1)  # "Gene-commentary_seqs" gives merged gene seqeunce, "Gene-commentary-products" gives transcripts
+            ) + 1)  # "Gene-commentary_seqs" gives merged gene sequence, "Gene-commentary-products" gives transcripts
             length = end - start + 1
 
-            print(f"\nUsing record {record_id}:")
-            print(f"Assembly: {assembly}")
-            print(f"Accession: {accession_number}")
             print(f"Location: {start}:{end}")
             print(f"Length: {length}bp\n")
         except IndexError:
             print(f"ERROR: Record_ID #{record_id} not found. Try a different value")
-            sys.exit()  # Exit the script
+            return # Force exit the function
+
 
         # For debugging - explore the file format:
         # Assuming gene_info is a dictionary, explore the format
@@ -174,10 +184,11 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
         # search_key_value(gene_info[0], 'Seq-interval_from')
         # Print the structure of gene_info[0]
         # explore_structure(gene_info[0]['Entrezgene_locus'])
-
+        # explore_structure(gene_info[0])
     else:
         print(f"ERROR: No gene information found for {gene_name} in {species}. Check the names are correct.")
-        sys.exit()
+        return # Force exit the function
+        #sys.exit()
 
     if gene_oriented_adjustment and strand == 'reverse':
         requested_start_position = start - end_adjust
@@ -190,14 +201,63 @@ def process_gene_info(gene_info, record_id, start_adjust, end_adjust, species, g
 
     return accession_number, requested_start_position, requested_end_position, strand, gene_ref_name
 
-
+cached_record = None
 # Function #3 - get list of genes and features in specified region
 def get_genes_in_region(accession_number, requested_start_position, requested_end_position, X=False):
-    # Retrieve GenBank record
-    handle = Entrez.efetch(db="nuccore", id=accession_number, rettype="gbwithparts", retmode="text")
-    record = SeqIO.read(handle, "genbank")
-    handle.close()
+    quickhandle = Entrez.efetch(db="nuccore", id=accession_number, rettype="gb", retmode="text")
+    quickrecord = SeqIO.read(quickhandle, "genbank")
+    for feature in quickrecord.features:
+        if feature.type == "source":
+            source_str = str(feature.location)
+            match = re.search(r"\[([<>]?\d+):([<>]?\d+[<>]?)\]\([+-]\)", source_str) # Look for location coordinates in particular format. '[<>]?' allows for < or >
+            if match:
+                chr_source_start = int(match.group(1).lstrip('<').lstrip('>')) + 1 # +1 to start only because of 0-based indexing in Entrez record (not present on NCBI website)
+                chr_source_end = int(match.group(2).lstrip('<').lstrip('>'))
+            break
+    if requested_start_position > chr_source_end:
+        print(f"ERROR: {requested_start_position} is not a valid start coordinate, {accession_number} is only {chr_source_end}bp long.")
+        sys.exit()
+    if requested_start_position < chr_source_start:
+        print(f"WARNING: {requested_start_position} is not a valid start coordinate, changing to {chr_source_start}.\n")
+        requested_start_position = chr_source_start
+    if requested_end_position > chr_source_end:
+        print(f"WARNING: Input end coordinate {requested_end_position} is out of bounds, trimming to closest value: {chr_source_end}\n")
+        requested_end_position = chr_source_end
 
+    near_accession_left_lim = False
+    near_accession_right_lim = False
+    # By default, look upstream and downstream 1Mb of the specified region for genes and their features that could overlap with the specified region
+    startdiff = 1000000
+    enddiff = 1000000
+    seqstart = requested_start_position - startdiff
+    seqstop = requested_end_position + enddiff
+    # Change this distance to fit smaller sequence records if needed, or if querying near the start or end of a sequence record
+    if seqstart < chr_source_start:
+        startdiff = startdiff - (chr_source_start - seqstart)
+        seqstart = chr_source_start
+        #print(f"new seq start: {seqstart}")
+        #print(f"new startdiff: {startdiff}")
+        near_accession_left_lim = True
+    if seqstop > chr_source_end:
+        enddiff = enddiff -(seqstop - chr_source_end)
+        seqstop = chr_source_end
+        #print(f"new seq stop: {seqstop}")
+        #print(f"new enddiff: {enddiff}")
+        near_accession_right_lim = True
+
+    global cached_record
+    # Retrieve GenBank record
+    #if cached_record is None:
+    #handle = Entrez.efetch(db="nuccore", id=accession_number, rettype="gbwithparts", retmode="text")
+    handle = Entrez.efetch(db="nuccore", id=accession_number, rettype="gbwithparts", retmode="text", seq_start=seqstart, seq_stop=seqstop)
+    print("Parsing genomic record...")
+    starttime= time.time()
+    cached_record = SeqIO.read(handle, "genbank")
+    handle.close()
+    endtime= time.time()
+    print(f"Record file parsed in {round(endtime - starttime, 1)} seconds\n")
+
+    record=cached_record
     # Check if start and end coordinates are within range of sequence record
     for feature in record.features:
         if feature.type == "source":
@@ -206,23 +266,51 @@ def get_genes_in_region(accession_number, requested_start_position, requested_en
             if match:
                 source_start = int(match.group(1).lstrip('<').lstrip('>')) + 1 # +1 to start only because of 0-based indexing in Entrez record (not present on NCBI website)
                 source_end = int(match.group(2).lstrip('<').lstrip('>'))
-    
-    start = requested_start_position
-    end = requested_end_position
-    if requested_start_position < source_start:
-        start = source_start
-        print(f"WARNING: {requested_start_position} is not a valid start coordinate, changing to {source_start}.")
-    if requested_end_position > source_end:
-        end = source_end
-        print(f"WARNING: Input end coordinate {requested_end_position} is out of bounds, trimming to closest value: {source_end}")
+            break
+    #print(f"source start: {source_start}")
+    #print(f"source end: {source_end}")
+    #print(f"req start: {requested_start_position}")
+    #print(f"req end: {requested_end_position}")
+    accessions = record.annotations['accessions']
+    # Find the element containing the ".." separator
+    separator_element = next((elem for elem in accessions if ".." in elem), None)
+
+    if separator_element:
+        # Extract the numbers on either side of ".."
+        abs_start_coord, abs_end_coord = map(int, separator_element.split('..'))
+        abs_start_coord = abs_start_coord + 1000000
+        abs_end_coord = abs_end_coord - 1000000
+        #print("Start number:", abs_start_coord)
+        #print("End number:  ", abs_end_coord)
+        start = source_start + 1000000
+        end = source_end - 1000000
+    if separator_element and near_accession_right_lim:
+        _, abs_end_coord = map(int, separator_element.split('..'))
+        abs_end_coord = abs_end_coord - enddiff
+        #print("abs_end_coord:  ", abs_end_coord)
+        end = source_end - enddiff
+        #print("end:  ", end)
+    if separator_element and near_accession_left_lim:
+        abs_start_coord, _ = map(int, separator_element.split('..'))
+        abs_start_coord = abs_start_coord + startdiff
+        #print("abs_start_coord:  ", abs_start_coord)
+        start = source_start + startdiff
+        #print("start:  ", start)
+    if not separator_element:
+        #print("Separator '..' not found in the list.")
+        #add code here to get sequence length etc
+        abs_start_coord = requested_start_position
+        abs_end_coord = requested_end_position
+        #print(abs_start_coord)
+        #print(abs_end_coord)
+        start = abs_start_coord
+        end = abs_end_coord
 
     # Calculate total user-specified sequence length in bp (need to add 1)
-    sequence_length = end - start + 1
+    sequence_length = abs_end_coord - abs_start_coord + 1
     
-    start_position = start
-    end_position = end
-
-    print(f"Specified region: {accession_number}:{start}-{end}")
+    
+    print(f"Specified region: {accession_number}:{abs_start_coord}-{abs_end_coord}")
     print(f"Specified region length: {sequence_length}bp\n")
 
     print("Finding features in region...")
@@ -234,49 +322,60 @@ def get_genes_in_region(accession_number, requested_start_position, requested_en
     # Parse GenBank features to identify genes that overlap with specified sequence region
     for feature in record.features:
         if feature.type == "gene":
+            #print(feature)
             location_str = str(feature.location)
             match = re.search(r"\[([<>]?\d+):([<>]?\d+[<>]?)\]\([+-]\)", location_str) # Look for location coordinates in particular format. '[<>]?' allows for < or >
             if match:
                 gene_start = int(match.group(1).lstrip('<').lstrip('>')) + 1 # +1 to start only because of 0-based indexing in Entrez record (not present on NCBI website)
                 gene_end = int(match.group(2).lstrip('<').lstrip('>'))
-                if (
+                if gene_end < start:
+                    continue
+                elif (
                     start <= gene_start <= end # Gene start inside region?
                     or start <= gene_end <= end # Gene end inside region?
                     or gene_start <= start <= end <= gene_end # Gene middle inside region?
                 ):
-                    # print(feature)
-                    # print(f'gene start: {gene_start}, gene end: {gene_end}')
-                    # print(f'region start: {start}, region end: {end}')
-                    genes_in_region.append(feature.qualifiers["gene"][0]) # Collect feature
+                    #print(feature)
+                    #print(f'gene start: {gene_start}, gene end: {gene_end}')
+                    #print(f'region start: {start}, region end: {end}')
+                    try:
+                        genes_in_region.append(feature.qualifiers["gene"][0]) # Collect feature
+                    except KeyError:
+                        genes_in_region.append(feature.qualifiers["locus_tag"][0]) # Collect feature
                     collect_features = True # Start collecting subsequent features from list
                     continue
             else:
                 print("Location coordinates in unexpected format") 
-                sys.exit()
-
+                return # Force exit the function
+                #sys.exit()
+        
         if collect_features:
+            #print(feature)
             if (
                 (feature.type == "ncRNA" and (X or "N" in feature.qualifiers.get("transcript_id", [""])[0])) # N designates curated records as opposed to X (e.g. NM vs XM)
                 or (feature.type == "mRNA" and (X or "N" in feature.qualifiers.get("transcript_id", [""])[0]))
                 or (feature.type == "CDS" and (X or "N" in feature.qualifiers.get("protein_id", [""])[0]))
             ):
                 gene_value = feature.qualifiers.get("gene", [""])[0]  # extract the gene name associated with the feature
-                print(f"gene: {gene_value}")
+                strand = re.search(r"[+-]", str(feature.location)).group() # Get the feature's strand direction
+                gene_values = [entry["gene"] for entry in collected_features if "gene" in entry]
+                if gene_value not in gene_values:
+                    print(f"gene: {gene_value} ({strand})")
+                elif gene_values and gene_value != gene_values[-1]:
+                    print(f"gene: {gene_value} ({strand})")
+
                 if feature.type == "mRNA":
                     transcript = feature.qualifiers.get("transcript_id", [""])[0] # extract the transcript_id associated with the feature
-                    print(f"mRNA found: {transcript}")
+                    print(f"      mRNA found: {transcript}")
                 if feature.type == "CDS":
                     transcript = feature.qualifiers.get("protein_id", [""])[0]
-                    print(f"CDS found: {transcript}")
+                    print(f"      CDS found: {transcript}")
                 if feature.type == "ncRNA":
                     transcript = feature.qualifiers.get("transcript_id", [""])[0]
-                    print(f"ncRNA found: {transcript}")
-
+                    print(f"      ncRNA found: {transcript}")
+            
                 # Remove extraneous characters from location and reorder the coordinates
                 simplified_location = reorder_location(re.sub(r"[^0-9,:]", "", str(feature.location)))
-
-                # Get the feature's strand direction
-                strand = re.search(r"[+-]", str(feature.location)).group()  
 
                 # Create dictionary format
                 feature_dict = {
@@ -288,17 +387,23 @@ def get_genes_in_region(accession_number, requested_start_position, requested_en
                 }
                 # Add features to dictionary
                 collected_features.append(feature_dict)
+        
 
             # Stop collecting features when the next "gene" feature is found
             if feature.type == "gene":
                 collect_features = False
 
-        # print("Collected features:")
-        # print(type(collected_features))
-        # for collected_feature in collected_features:
-        #    print(collected_feature)
-        #    print("")
-    return genes_in_region, collected_features, start_position, end_position, sequence_length
+    #print("Collected features:")
+    #print(type(collected_features))
+    #for collected_feature in collected_features:
+    #   print(collected_feature)
+    #   print("")
+
+    #remove gene names from genes_in_region if they don't appear in collected features (pseudogenes, miRNAs, etc)
+    featurelist = {entry["gene"] for entry in collected_features}
+    genes_in_region = [gene_name for gene_name in genes_in_region if gene_name in featurelist]
+    #print(collected_features)
+    return genes_in_region, collected_features, start, end, sequence_length, abs_start_coord, abs_end_coord, startdiff
 
 
 # Function #3.5 - simplify and reorder gene feature coordinates
@@ -314,7 +419,6 @@ def reorder_location(location_str):
 
     # Format the ordered pairs back into the desired string format e.g. "100:200, 300:400"
     ordered_location_str = ",".join([f"{int(left)+1}:{right}" for left, right in ordered_pairs]) # +1 to left(start) to account for 0-based numbering from Entrez record
-
     return ordered_location_str
 
 
@@ -375,7 +479,7 @@ def reformat(collected_features):
         organized_dict[transcript_key]["CDS"].append(cds_entry)
     # Convert the values of the organized_dict to a list - the final output with mRNAs paired to CDSs
     paired_list = list(organized_dict.values())
-
+    #print(paired_list)
     # Create a mapping of unique ncRNA transcriptids to numbers
     transcriptid_mapping_transcript = defaultdict(lambda: len(transcriptid_mapping_transcript) + 1)
     
@@ -422,7 +526,8 @@ def pipmaker(paired_list, ncrna_list, start_position):
 
     # First, deal with protein-coding genes
     for transcript in paired_list:
-        if "mRNA" in transcript:
+        #print(transcript)
+        if transcript["mRNA"]:
             mrnas = transcript["mRNA"]
             if mrnas:
                 first_mrna = mrnas[0]  # Assuming the first mRNA entry represents the transcript
@@ -458,6 +563,32 @@ def pipmaker(paired_list, ncrna_list, start_position):
 
                 # Add feature lines
                 result_text.extend(feature_lines)
+        else:
+            # If only CDS is in paired list (e.g. bacterial genes)
+            cdss = transcript["CDS"]
+            if cdss:
+                first_cds = cdss[0]  # Assuming the first mRNA entry represents the transcript
+                gene_name = first_cds["gene"]
+                transcript_id = first_cds["transcriptid"]
+                strand_indicator = (">" if first_cds["strand"] == "+" else "<")  # Get strand direction < or >
+                start = (min(cds["start"] for cds in cdss) - start_position + 1)  # Add 1 to avoid 0 values
+                end = (max(cds["end"] for cds in cdss) - start_position + 1)  # Add 1 to avoid 0 values
+                result_text.append(f"{strand_indicator} {start} {end} {gene_name}:{transcript_id}") # Assemble header line
+
+                # Prepare to write feature lines
+                feature_lines = []
+                # Make exon feature lines
+                if "CDS" in transcript:
+                    exons = transcript["CDS"]
+                    for exon in exons:
+                        exon_start = (exon["start"] - start_position + 1)  # Add 1 to avoid 0 values
+                        exon_end = (exon["end"] - start_position + 1)  # Add 1 to avoid 0 values
+                        feature_lines.append(f"{exon_start} {exon_end} exon")
+                # Sort feature lines under each header
+                feature_lines.sort(key=lambda x: (int(x.split()[0]), int(x.split()[1])))
+                # Add feature lines
+                result_text.extend(feature_lines)
+
 
     # Second, deal with ncRNA genes
     for transcript in ncrna_list:
@@ -556,7 +687,10 @@ def cut(coordinates, sequence_length):
     for line in coordinates:
         if line.startswith(">"):
             header_values = list(map(int, line.split()[1:3]))
+            #print(f"header values >: {header_values}")
             if header_values[0] < 1 and header_values[1] < 1:
+                continue
+            if header_values[0] > sequence_length and header_values[1] > sequence_length:
                 continue
             else:
                 if header_values[0] < 1:
@@ -575,7 +709,10 @@ def cut(coordinates, sequence_length):
                 processed_coordinates.append(processed_line)
         elif line.startswith("<"):
             header_values = list(map(int, line.split()[1:3]))
+            #print(f"header values <: {header_values}")
             if header_values[0] < 1 and header_values[1] < 1:
+                continue
+            if header_values[0] > sequence_length and header_values[1] > sequence_length:
                 continue
             else:
                 if header_values[0] < 1:
@@ -655,39 +792,32 @@ def reverse_coordinates(coordinates, sequence_length):
 
 
 # Function C - download DNA sequence region in FASTA format (if -fasta argument included)
-def download_fasta(species, accession, start, end, fasta_output_file, apply_reverse_complement):
-    print("Getting FASTA sequence...")
-    # Retrieve GenBank record 
-    handle = Entrez.efetch(db="nuccore", id=accession, rettype="gbwithparts", retmode="text")
-    record = SeqIO.read(handle, "genbank") # takes a while
-    handle.close()
+def download_fasta(species, accession, start, end, fasta_output_file, apply_reverse_complement, abs_start_coord, abs_end_coord):
+    global cached_record
+    record = cached_record
 
     # Extract sequence from GenBank record based on coordinates
     sequence = record.seq[start:end]
 
     if not apply_reverse_complement:
         # Create a SeqRecord object and save it in FASTA format
-        fasta_record = SeqIO.SeqRecord(sequence, id=f"{species}:{accession}_{start}:{end}:1", description="")
+        fasta_record = SeqIO.SeqRecord(sequence, id=f"{species}:{accession}_{abs_start_coord}:{abs_end_coord}:1", description="")
     else:
         # Reverse complement the sequence
         reverse_complement_sequence = str(sequence.reverse_complement())
         # Create a SeqRecord object and save it in FASTA format
         fasta_record = SeqIO.SeqRecord(
             Seq(reverse_complement_sequence),
-            id=f"{species}:{accession}_{start}:{end}:-1",
-            description="",
-        )
+            id=f"{species}:{accession}_{abs_start_coord}:{abs_end_coord}:-1", description="")
 
     # Write to file
     SeqIO.write(fasta_record, f"{fasta_output_file}", "fasta")
 
 
 #Function D - use flanking genes
-def useflanks(collected_features, start_position, end_position, flank):
-
-    input_region_start = start_position
-    input_region_end = end_position
-    sequence_length = (input_region_end - input_region_start) + 1
+def useflanks(collected_features, start_position, end_position, flank, abs_start_coord, startdiff):
+    
+    sequence_length = (end_position - start_position) + 1
 
     print(f"Specified sequence length: {sequence_length}bp\n")
 
@@ -719,47 +849,59 @@ def useflanks(collected_features, start_position, end_position, flank):
             return max(max_locations)
         else:
             return None
-      
-    # Prompt the user for input
-    gene_name_input1 = input("Please enter the first gene name (case sensitive): ")
-    # Check if the transcript name is present in the dictionary
-    if gene_name_input1 in gene_locations:
-        start_coordinate = get_min_location(gene_name_input1)
-        if flank == "in":
+    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
+        # Prompt the user for input
+        gene_name_input1 = input("> Enter the first gene name (case sensitive): ")
+        # Check if the transcript name is present in the dictionary
+        if gene_name_input1 in gene_locations:
             start_coordinate = get_min_location(gene_name_input1)
-            print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}")
-        if flank == "ex":
-            start_coordinate = get_max_location(gene_name_input1)+1
-            print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}")
-    else:
-        choice = input("Invalid input. Do you want to try again? (yes/no): ")
-        if choice.lower() != "yes":
-            print("Terminating the script.")
-            sys.exit() # Terminate the script if the user chooses not to try again
+            if flank == "in":
+                start_coordinate = get_min_location(gene_name_input1)
+                start_coordinate = start_coordinate+abs_start_coord-startdiff-1
+                print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}\n")
+            if flank == "ex":
+                start_coordinate = get_max_location(gene_name_input1)+1
+                start_coordinate = start_coordinate+abs_start_coord-startdiff-1
+                print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}\n")
+        else:
+            choice = input("Invalid input. Do you want to try again? (y/n): ")
+            if choice.lower() != "y":
+                print("Terminating the script.")
+                sys.exit() # Terminate the script if the user chooses not to try again
+            else:
+                continue # Continue to prompt for input if the user chooses to try again
+        break # Exit the outer loop if a valid gene name is entered
+
     
-    # Prompt the user for input
-    gene_name_input2 = input("Please enter the second gene name (case sensitive): ")
-    # Check if the transcript name is present in the dictionary
-    if gene_name_input2 in gene_locations:
-        end_coordinate = get_max_location(gene_name_input2)
-        if flank == "in":
+    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
+        # Prompt the user for input
+        gene_name_input2 = input("> Enter the second gene name (case sensitive): ")
+        # Check if the transcript name is present in the dictionary
+        if gene_name_input2 in gene_locations:
             end_coordinate = get_max_location(gene_name_input2)
-            print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}")
-        if flank == "ex":
-            end_coordinate = get_min_location(gene_name_input2)-1
-            print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}")
-    else:
-        choice = input("Invalid input. Do you want to try again? (yes/no): ")
-        if choice.lower() != "yes":
-            print("Terminating the script.")
-            sys.exit() # Terminate the script if the user chooses not to try again
+            if flank == "in":
+                end_coordinate = get_max_location(gene_name_input2)
+                end_coordinate = end_coordinate+abs_start_coord-startdiff-1
+                print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}\n")
+            if flank == "ex":
+                end_coordinate = get_min_location(gene_name_input2)-1
+                end_coordinate = end_coordinate+abs_start_coord-startdiff-1
+                print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}\n")
+        else:
+            choice = input("Invalid input. Do you want to try again? (y/n): ")
+            if choice.lower() != "y":
+                print("Terminating the script.")
+                sys.exit() # Terminate the script if the user chooses not to try again
+            else:
+                continue # Continue to prompt for input if the user chooses to try again
+        break # Exit the outer loop if a valid gene name is entered
 
     new_start = start_coordinate
     new_end = end_coordinate
-
     if new_start > new_end:
         print("ERROR: start coordinate cannot be larger than end coordinate")
-        sys.exit()
+        return # Force exit the function
+        #sys.exit()
 
     return new_start, new_end, gene_name_input1, gene_name_input2
 
@@ -826,6 +968,7 @@ def graphic(formatted_coordinates, sequence_length, X):
 
     # Combine adjacent directionality markers
     genomic_map_combined = ''.join(genomic_map).replace("<>", "#").replace("><", "#").replace("<<", "#").replace(">>", "#")
+    genomic_map_combined = "5'-" + genomic_map_combined + "-3'"
     print(f"\nGraphical representation of specified sequence region:")
     print(genomic_map_combined)
 
@@ -860,27 +1003,27 @@ def gbgene(
         gene_info, record_id, start_adjust, end_adjust, species, gene_name, gene_oriented_adjustment)
 
     # Get a list of genes and their features included in the sequence region
-    genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
+    genes, collected_features, start_position, end_position, sequence_length, abs_start_coord, abs_end_coord, startdiff = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
 
-    # If no genes in genes list, terminate script
+    if X == False and len(collected_features) == 0:
+        print("\nWARNING: no curated features found. Trying again with -x option...\n")
+        X = True
+        genes, collected_features, start_position, end_position, sequence_length, abs_start_coord, abs_end_coord, startdiff = get_genes_in_region(accession_number, requested_start_position, requested_end_position, X)
+    #print(collected_features)
+    # If no genes in genes list
     if len(genes) == 0:
-        print("\nNo genes found in region. Terminating script\n")
-        sys.exit()
+        print("\nNo genes found in region.\n")
+        #sys.exit()
 
     print(f'\nGenes in the specified region: {genes}')
 
     if flank:  
-        new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank)
-        genes, collected_features, start_position, end_position, sequence_length = get_genes_in_region(accession_number, new_start, new_end, X)
-
-    # If no genes in genes list
-    if len(genes) == 0:
-        print("No genes found in region\n")
-        #sys.exit()
+        new_start, new_end, fgene1, fgene2 = useflanks(collected_features, start_position, end_position, flank, abs_start_coord, startdiff)
+        genes, collected_features, start_position, end_position, sequence_length, abs_start_coord, abs_end_coord, startdiff = get_genes_in_region(accession_number, new_start, new_end, X)
         
     # If -fw argument used and the gene is on the reverse strand, force reverse complement
     if fw and strand == 'reverse':
-        print(f'{gene_ref_name} is on the reverse strand, flipped automatically.\n')
+        print(f'\n{gene_ref_name} is on the reverse strand, flipped automatically.')
         apply_reverse_complement = True
 
     
@@ -891,7 +1034,7 @@ def gbgene(
     # print("List of ncRNAs:", ncrna_list)
     # Convert the lists of features into the final pipmaker format
     coordinates = pipmaker(paired_list, ncrna_list, start_position)
-
+    
     # If -nocut argument is included, continue. If not, cut the ends to remove coordinates out of range.
     if nocut is False:
         coordinates = cut(coordinates, sequence_length)
@@ -911,14 +1054,14 @@ def gbgene(
     if autoname and not flank:
         if not fasta_output_file:
             if not apply_reverse_complement:
-                fasta_output_file = f"{species}_{gene_ref_name}_{start_position}-{end_position}.fasta.txt"
+                fasta_output_file = f"{species}_{gene_ref_name}_{abs_start_coord}-{abs_end_coord}.fasta.txt"
             else:
-                fasta_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}_revcomp.fasta.txt")
+                fasta_output_file = (f"{species}_{gene_ref_name}_{abs_start_coord}-{abs_end_coord}_revcomp.fasta.txt")
         if not coordinates_output_file:
             if not apply_reverse_complement:
-                coordinates_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}_{abs_start_coord}-{abs_end_coord}.annotation.txt")
             else:
-                coordinates_output_file = (f"{species}_{gene_ref_name}_{start_position}-{end_position}_revcomp.annotation.txt")
+                coordinates_output_file = (f"{species}_{gene_ref_name}_{abs_start_coord}-{abs_end_coord}_revcomp.annotation.txt")
     if autoname and (flank == "in"):
         if not fasta_output_file:
             if not apply_reverse_complement:
@@ -948,11 +1091,11 @@ def gbgene(
   
     if apply_reverse_complement:
         formatted_coordinates = reverse_coordinates(formatted_coordinates, sequence_length) # Reverse the coordinates
-        message=f"\nReversed coordinates saved to "
+        message=f"Reversed coordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
     else:
-        message=f"\nCoordinates saved to "
+        message=f"Coordinates saved to "
         if vis:
             graphic(formatted_coordinates, sequence_length, X)
             
@@ -960,7 +1103,7 @@ def gbgene(
     if coordinates_output_file or autoname:
         with open(coordinates_output_file, 'w') as coordinates_file:
                 coordinates_file.write(formatted_coordinates)
-        print(f"{message}{coordinates_output_file}")
+        print(f"\n{message}{coordinates_output_file}")
     else:
         print("\nNo coordinates output file specified")
 
@@ -971,7 +1114,7 @@ def gbgene(
     # If -fasta argument is included (or -autoname), write the DNA sequence to a txt file:
     if fasta_output_file or autoname:
         # First download the sequence
-        download_fasta(species, accession_number, start_position, end_position, fasta_output_file, apply_reverse_complement) 
+        download_fasta(species, accession_number, start_position, end_position, fasta_output_file, apply_reverse_complement, abs_start_coord, abs_end_coord) 
         # Check if need to reverse complement
         if not apply_reverse_complement:
             print(f"DNA sequence saved to {fasta_output_file}")
@@ -1008,27 +1151,54 @@ def main():
 
     # Parse the command-line arguments
     args = parser.parse_args()
+
+    if args.gene_oriented_adjustment is True and (args.start_adjust == 0 and args.end_adjust == 0):
+        print("WARNING: -goa applied without a start or end adjustment. Did you mean to add an adjustment?")
+
     # Loop through multi-species inputs
+    failed_species = []
+    start_time = time.time()
     for species in args.species:
         # Provide arguments to run
-        gbgene(
-            species,
-            args.gene_name,
-            args.record_id,
-            args.start_adjust,
-            args.end_adjust,
-            args.gene_oriented_adjustment,
-            args.fasta_output_file,
-            args.coordinates_output_file,
-            args.x,
-            args.nocut,
-            args.rev,
-            args.autoname,
-            args.fw,
-            args.flank,
-            args.vis,
-        )
+        global cached_record
+        cached_record = None
+        try:
+            gbgene(
+                species,
+                args.gene_name,
+                args.record_id,
+                args.start_adjust,
+                args.end_adjust,
+                args.gene_oriented_adjustment,
+                args.fasta_output_file,
+                args.coordinates_output_file,
+                args.x,
+                args.nocut,
+                args.rev,
+                args.autoname,
+                args.fw,
+                args.flank,
+                args.vis,
+            )
+        except Exception:
+            failed_species.append(species)
 
+    end_time = time.time()
+    if len(args.species) > 1:
+        print(f"\nAll completed in {round(end_time - start_time, 1)} seconds")
+    else:
+        print(f"\nCompleted in {round(end_time - start_time, 1)} seconds")
+    if len(failed_species) > 0:
+        terminalwidth = get_terminal_size()[0]
+        message = f" Failed to process species: {failed_species} "
+        nameswidth = len(message)
+        leftindent = ((terminalwidth-nameswidth)//2)
+        print("\n" + 
+              "!"*terminalwidth+
+              "!"*leftindent+ 
+              f"{message}"+ 
+              "!"*(terminalwidth-leftindent-nameswidth)+
+              "!"*terminalwidth)
 
 if __name__ == "__main__":
     main()

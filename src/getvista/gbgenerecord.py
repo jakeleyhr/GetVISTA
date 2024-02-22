@@ -4,7 +4,7 @@
 File: gbgenerecord.py
 Author: Jake Leyhr
 GitHub: https://github.com/jakeleyhr/GetVISTA/
-Date: January 2024
+Date: February 2024
 Description: Query the GenBank database with a species and gene name to obtain a list of different \
     records containing the sequence to inform use of gbvistagene.py
 """
@@ -86,7 +86,7 @@ def gbrecord(species, gene_name):
         # Print each record information
         for i in range(0, 999):
             try:
-                assembly = gene_info[0]['Entrezgene_locus'][i]['Gene-commentary_label']
+                
                 accession = gene_info[0]['Entrezgene_locus'][i]['Gene-commentary_accession']
                 start = int(gene_info[0]['Entrezgene_locus'][i]['Gene-commentary_seqs'][0]['Seq-loc_int']['Seq-interval']['Seq-interval_from'])
                 end = int(gene_info[0]['Entrezgene_locus'][i]['Gene-commentary_seqs'][0]['Seq-loc_int']['Seq-interval']['Seq-interval_to'])
@@ -94,7 +94,15 @@ def gbrecord(species, gene_name):
 
                 print("") 
                 print(f"RECORD {i}")
-                print(f"Assembly: {assembly}")
+                try:
+                    assembly = gene_info[0]["Entrezgene_locus"][record_id]["Gene-commentary_label"]
+                    print(f"Assembly: {assembly}")
+                except:
+                    try:
+                        assembly = gene_info[0]["Entrezgene_source"]["BioSource"]["BioSource_org"]["Org-ref"]["Org-ref_taxname"]
+                        print(f"Organism: {assembly}")
+                    except:
+                        pass
                 print(f'Accession: {accession}')
                 print(f'Location: {start}:{end}')
                 print(f'Length: {length}')

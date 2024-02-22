@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+
+"""
+File: emailaddress.py
+Author: Jake Leyhr
+GitHub: https://github.com/jakeleyhr/GetVISTA/
+Date: February 2024
+Description: check and update the email address used to make GenBank Entrez queries
+"""
+
+# Import dependencies
 import argparse
 import configparser
 import os
