@@ -15,9 +15,9 @@ Query Ensembl or GenBank to obtain genomic information in VISTA format. Useful f
 \
 The reccommended way (and only way as far as I know) to get these paired sequence and annotation files is to use the [Ensembl genome browser](https://www.ensembl.org/index.html) website interface to navigate to your region of interest, then export and save the two files. This works well, but is quite time-consuming and fiddly to go through all the steps. The Ensembl genome browser also only contains a fraction of the sequenced genome that exist in other databases e.g. NCBI's GenBank, which limits the species it's possible to actually use in the mVISTA analyses (with an annotation file). \
 \
-I created this package to address these issues, providing a fast and user-friendly way to obtain pairs of sequence and annotation files from the command line. **No interfacing with websites or coding knowledge is required!** \
+I created this package to address these issues, providing a fast and user-friendly way to obtain pairs of sequence and annotation files from the command line. **No coding knowledge is required to use it!** \
 \
-After installing the package, you can use the various modules to search either the Ensembl genome browser database or the GenBank database for sequences by gene name or genomic coordinates, and even perform more advanced operations such as obtaining gene sequences with specific flanking sequences, including by specifying upstream or downstream genes that should represent the region boundaries. Relevant information is printed to the terminal, including simple visualisations, and the FASTA and pipmaker files are saved as .txt files in your working directory. With a single command and a matter of seconds, you can easily obtain homologous sequence regions from multiple species that are immediately ready to upload to the mVISTA web interface.
+After installing the package, you can use the four main modules (engene, gbgene, encoords, gbcoords) to search either the Ensembl genome browser database or the GenBank database for sequences by gene name or genomic coordinates, and even perform more advanced operations such as obtaining gene sequences with specific flanking sequences, including by specifying upstream or downstream genes that should represent the region boundaries. Relevant information is printed to the terminal, including simple visualisations, and the FASTA and pipmaker files are saved as .txt files in your working directory. With as little as a single command and a matter of seconds, you can easily obtain homologous sequence regions from multiple species that are ready to upload to the mVISTA web interface.
 &nbsp;
 
 ## Author
@@ -33,7 +33,7 @@ https://github.com/jakeleyhr/GetVISTA
 * fuzzywuzzy
 * python_Levenshtein
 
-## Quick start guide
+## Getting started
 * Install and open [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
 * Create an environment with python 3.11 e.g:
 ```
@@ -47,11 +47,11 @@ conda activate getvistaenv
 ```
 pip install getvista
 ```
-* Navigate to the folder you want to deposit the output file in:
+* Navigate to the folder you want to deposit the output files in:
 ```
 cd \path\to\working\directory
 ```
-* Then you're ready to start!
+* Then you're ready to begin!
 
 
 
@@ -113,7 +113,7 @@ This produces the following output in the terminal:
 ```
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -121,16 +121,19 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35433347-35454746
 Specified sequence length: 21400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
 
 Coordinates saved to human_gdf5.annotation.txt
 DNA sequence saved to human_gdf5.fasta.txt
+
+Completed in 1.4 seconds
 ```
 The species name has to be entered in a form recognised by Ensembl, which includes binomial and one-word common names. For species with multi-word species names such as Spotted Gar, the binomial name must be used with an underscore i.e. Lepisosteus_oculatus. Multiple species names can be entered, not just one, as will be explained later in this document. The **enspecies** module makes finding binomial names of species in the Ensembl database easy, as will be explained later in this document.
 
@@ -143,7 +146,7 @@ $ engene -s human -g gdf5 -fasta fastafilename -anno annotationfilename
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -151,36 +154,48 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35433347-35454746
 Specified sequence length: 21400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
 
 Coordinates saved to annotationfilename.txt
 DNA sequence saved to fastafilename.txt
+
+Completed in 1.4 seconds
 ```
 
 Without **-anno**, **-fasta**, or **-autoname** arguments, the terminal output will be provided but no output .txt files will be saved to the working directory. This can be useful for quickly testing a set of arguments without cluttering up your working directory with test output files.
 ```
 $ engene -s human -g gdf5
 
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
 Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35433347-35454746
 Specified sequence length: 21400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
 
 No coordinates output file specified
 No sequence output file specified
+
+Completed in 1.3 seconds
 ```
 
 If only **-anno** is provided, **-autoname** can also be provided to generate the remaining (fasta) filename:
@@ -189,7 +204,7 @@ $ engene -s human -g gdf5 -anno annotationfilename -autoname
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -197,6 +212,7 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35433347-35454746
 Specified sequence length: 21400bp
 
@@ -215,7 +231,7 @@ $ engene -s human -g gdf5 -autoname -sa 50000 -ea 20000
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -223,18 +239,21 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35383347-35474746
 Specified sequence length: 91400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
-CEP250-202
-UQCC1-205
+UQCC1-205 (-)
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
+CEP250-202 (+)
 
-Coordinates saved to human_gdf5_20.35383347-35474746.annotation.txt
-DNA sequence saved to human_gdf5_20.35383347-35474746.fasta.txt
+Coordinates saved to human_GDF5_20.35383347-35474746.annotation.txt
+DNA sequence saved to human_GDF5_20.35383347-35474746.fasta.txt
+
+Completed in 4.5 seconds
 ```
 In the output, note that the gene length is 21,400bp, but the total sequence length extracted is 91,400bp as a result of the 70,000bp flanking regions also being included. The automatically generated output file names also now include the new genomic coordinates. The annotation file also reflects these additional sequences, including the gene transcripts in the expanded region:
 ```
@@ -358,38 +377,41 @@ When the **-vis** flag is included in the command, a simple graphical representa
 ```
 $ engene -s human -g gdf5 -sa 50000 -ea 20000 -vis
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35383347-35474746
 Specified sequence length: 91400bp
 
 Transcripts included in region:
-UQCC1-205
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
-CEP250-202
+UQCC1-205 (-)
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
+CEP250-202 (+)
 
 Graphical representation of specified sequence region:
-<UQCC1-205-cut5':80769bp<========================================================
+5'-<UQCC1-205-cut5':80769bp<=====================================================
 =================================================================================
 =================================================================================
 =================================================================================
-=>GDF5-AS1-201#GDF5-201<=========================================================
+====>GDF5-AS1-201#GDF5-201<======================================================
 =================================================================================
 =================================================================================
-====<MIR1289-1-201<=====================>CEP250-202-cut3':44534bp>
+=======<MIR1289-1-201<=====================>CEP250-202-cut3':44534bp>-3'
 
 No coordinates output file specified
 No FASTA output file specified
+
+Completed in 3.4 seconds
 ```
 Here, the transcripts in the region are printed with their strand directions indicated by the flanking '>' or '<' symbols while the '=' symbols represent intergenic sequences. Partially overlapping transcripts, such as GDF5-AS-1 and GDF5-201, are shown by the presence of the '#' symbol between the two names. The lengths of the displayed intergenic sequences are approximately accurate, while genes are only represented by their printed names, regardless of size.
 
@@ -427,7 +449,7 @@ Produces this output in the terminal:
 ```
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -435,16 +457,19 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35433347-35454746
 Specified sequence length: 21400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
 
 Reversed coordinates saved to human_gdf5_revcomp.annotation.txt
-Reverse complement DNA sequence saved to human_gdf5_revcomp.fasta.txt
+Reverse complement DNA sequence saved to human_GDF5_revcomp.fasta.txt
+
+Completed in 1.7 seconds
 ```
 The automatically generated output file names reflect the fact that the sequence and annotation coordinates have been reversed, the coordinates looking like this:
 ```
@@ -471,7 +496,7 @@ In this case, the module behaves as previously described, just iterating through
 ```
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: human gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -479,24 +504,25 @@ Assembly name: GRCh38
 human gdf5 coordinates: 20:35433347-35454746
 human gdf5 is on reverse strand
 human gdf5 sequence length: 21400bp
+
 Specified coordinates: 20:35383347-35474746
 Specified sequence length: 91400bp
 
 Transcripts included in region:
-GDF5-AS1-201
-GDF5-201
-MIR1289-1-201
-CEP250-202
-UQCC1-205
+UQCC1-205 (-)
+GDF5-AS1-201 (+)
+GDF5-201 (-)
+MIR1289-1-201 (-)
+CEP250-202 (+)
 
 gdf5 is on the reverse strand, flipped automatically.
 
-Reversed coordinates saved to human_gdf5_20.35383347-35474746_revcomp.annotation.txt
-Reverse complement DNA sequence saved to human_gdf5_20.35383347-35474746_revcomp.fasta.txt
+Reversed coordinates saved to human_GDF5_20.35383347-35474746_revcomp.annotation.txt
+Reverse complement DNA sequence saved to human_GDF5_20.35383347-35474746_revcomp.fasta.txt
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ mouse gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: mouse gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -504,23 +530,24 @@ Assembly name: GRCm39
 mouse gdf5 coordinates: 2:155782943-155787287
 mouse gdf5 is on reverse strand
 mouse gdf5 sequence length: 4345bp
+
 Specified coordinates: 2:155732943-155807287
 Specified sequence length: 74345bp
 
 Transcripts included in region:
-Uqcc1-204
-Gm15557-201
-Gdf5-201
-Cep250-204
+Uqcc1-204 (-)
+Gm15557-201 (+)
+Gdf5-201 (-)
+Cep250-204 (+)
 
 gdf5 is on the reverse strand, flipped automatically.
 
-Reversed coordinates saved to mouse_gdf5_2.155732943-155807287_revcomp.annotation.txt
-Reverse complement DNA sequence saved to mouse_gdf5_2.155732943-155807287_revcomp.fasta.txt
+Reversed coordinates saved to mouse_Gdf5_2.155732943-155807287_revcomp.annotation.txt
+Reverse complement DNA sequence saved to mouse_Gdf5_2.155732943-155807287_revcomp.fasta.txt
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ chicken gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ engene: chicken gdf5 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
@@ -528,22 +555,26 @@ Assembly name: bGalGal1.mat.broiler.GRCg7b
 chicken gdf5 coordinates: 20:1563813-1568758
 chicken gdf5 is on forward strand
 chicken gdf5 sequence length: 4946bp
+
 Specified coordinates: 20:1513813-1588758
 Specified sequence length: 74946bp
 
 Transcripts included in region:
-CEP250-203
-GDF5-201
-UQCC1-201
-ERGIC3-201
-ENSGALT00010061117
-ENSGALT00010061118
-ENSGALT00010061120
+ERGIC3-201 (-)
+ENSGALT00010061117 (+)
+CEP250-203 (-)
+GDF5-201 (+)
+ENSGALT00010061118 (+)
+ENSGALT00010061120 (-)
+UQCC1-201 (+)
 
-Coordinates saved to chicken_gdf5_20.1513813-1588758.annotation.txt
-DNA sequence saved to chicken_gdf5_20.1513813-1588758.fasta.txt
+Coordinates saved to chicken_GDF5_20.1513813-1588758.annotation.txt
+DNA sequence saved to chicken_GDF5_20.1513813-1588758.fasta.txt
+
+All completed in 35.8 seconds
 ```
-The inclusion of the **-fw** argument caused the human and mouse, but not chicken, strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjunction with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential.
+The inclusion of the **-fw** argument caused the human and mouse, but not chicken, strand directions to be automatically flipped such that in all 3 species, Gdf5 is output in the same (forward) strand. This is particularly useful in conjunction with the input of multiple species, as the same gene will often be annotated on different strands in assemblies from different species, and for sequence alignment a common orientation is essential. \
+Note that if the module fails for any species entry in the list (e.g. because of a mispelling in the species name or being unable to find a gene by that name in the specified species), the module will continue to process the other species, and at the end tell you which species failed.
 ## -flank
 Finally, the last option for specifying the sequence region is **-flank**. Adding this argument causes the module to pause after printing the list of genes in the specified sequence region, and prompts the user to input two gene names from this list. These two genes are then used to define the boundaries of a new sequence region, whereupon the module reruns to extract the feature coordinates and fasta sequence corresponding to this new region. **-flank** can be used in two modes: **-flank in** includes the two genes within the boundaries, such that the new sequence begins at the first base of the first gene and ends at the last base of the second gene (read left to right along the forward strand), while **-flank ex** excludes these genes, such that the new sequence begins immediately after the first gene, and ends immediately before the second gene. For example, imagine engene is run with Gene C as an input and **-sa 100000 -ea 100000** so the region includes Gene A, Gene B, Gene C, Gene D, and Gene E. When the **-flank in** argument is included and Gene B and Gene D are entered at the prompt, the new sequence includes just Genes B, C, and D, and the two intergenic sequences between them. On the other hand, when the **-flank ex** argument is used and Gene B and Gene D are entered at the prompt, the new sequence only includes Gene C and the intergenic sequences on either side of it.
 
@@ -591,7 +622,50 @@ options:
                         genes, 'ex' to exclude them
   -vis                  Display graphical representation of the sequence in the terminal
 ```
-This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particularly relevant when exploring new genomes with few manually curated genes/transcripts. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but a different record may be desired in some cases (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark). Also unlike engene, gene synonyms can be searched for rather than the specific or canonical gene symbol. It's important to be aware of this - for example, if you search for the zebrafish _shh_ gene. In this case, as a result of the teleost whole-genome duplication, zebrafish possess two paralogs of shh: _shha_ and _shhb_, but the result will be the _shha_ gene only, because _shh_ is listed as one of its synonyms while it isn't for _shhb_.
+This command functions almost identically to engene, except that it queries the GenBank nucleotide database rather than Ensembl. There is no **-all** option, as all transcripts are automatically included in the annotation file. However, this only includes the manually curated transcripts. To get all transcripts including the predicted ones, add the **-x** flag. This may be particularly relevant when exploring new genomes with few manually curated genes/transcripts. If no manually curated features are found in the region, the module will automatically try to look for the predicted ones. There is also an extra option **-r**, to specify the sequence record. By default it is 0 (the default record according to GenBank), but a different record may be desired in some cases (e.g. to use the human T2T assembly CHM13v2.0 instead of the GRCh38.14 assembly - see the gbrecords module description below). \
+Unlike in engene, the species name can be entered in any form with underscores separating the words (e.g. carcharodon_carcharias or great_white_shark). Also unlike engene, gene synonyms can be searched for rather than the specific or canonical gene symbol. It's important to be aware of this - for example, if you search for the zebrafish _shh_ gene. In this case, as a result of the teleost whole-genome duplication, zebrafish possess two paralogs of shh: _shha_ and _shhb_, but the result will be the _shha_ gene only, because _shh_ is listed as one of its synonyms while it isn't for _shhb_. \
+You can also search for genes using refseq transcript or protein IDs (e.g. NM_008109.4 or NP_032135.2), but be aware that the species associated with these IDs will take precedence over the species given as an argument in **-s**. For example, NM_008109.4 is from the mouse genome, so even if the command given is **-s human -g NM_008109.4**, the result will be the mouse gene, so be careful to check the "Organism" line that gets printed in the terminal to be sure (see <<< below):
+```
+$ gbgene -s human -g NM_008109.4
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ gbgene: human NM_008109.4 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+Gene info:
+Name: Gdf5
+Description: growth differentiation factor 5
+Synonyms: ['bp', 'brp', 'BMP-14', 'Cdmp-1']
+Locus: 2 77.26 cM
+Strand: reverse
+
+Using record 0:
+Organism: house mouse (Mus musculus)                <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Assembly: Chromosome 2 Reference GRCm39 C57BL/6J
+Accession: NC_000068
+Location: 155782943:155787204
+Length: 4262bp
+
+Parsing genomic record...
+Record file parsed in 4.6 seconds
+
+Specified region: NC_000068:155782943-155787204
+Specified region length: 4262bp
+
+Finding features in region...
+gene: Gdf5 (-)
+      mRNA found: NM_008109.4
+      CDS found: NP_032135.2
+
+Genes in the specified region: ['Gdf5']
+
+No coordinates output file specified
+No FASTA output file specified
+
+Completed in 15.3 seconds
+```
 
 
 
@@ -606,9 +680,9 @@ This command functions almost identically to engene, except that it queries the 
 # encoords usage
 ```
 $ encoords -h
-usage: encoords.py [-h] -s SPECIES -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
-                              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] 
-                              [-rev] [-autoname] [-flank FLANK] [-vis]
+usage: encoords.py [-h] -s SPECIES -c GENCOORDINATES [-goo] [-fasta FASTA_OUTPUT_FILE]
+                              [-anno COORDINATES_OUTPUT_FILE] [-all] [-nocut] [-rev] 
+                              [-autoname] [-flank FLANK] [-vis]
 
 Query the Ensembl database with a species name and genomic coordinates to obtain DNA 
 sequences in FASTA format and gene feature coordinates in pipmaker format.
@@ -619,6 +693,9 @@ options:
                         Species name (e.g., 'Homo_sapiens' or 'Human')
   -c GENCOORDINATES, --gencoordinates GENCOORDINATES
                         Genomic coordinates (e.g., 1:1000-2000)
+  -goo, --gene_oriented_output
+                        Make output files follow specified gene orientation, not assembly 
+                        orientation
   -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
                         Output file name for the DNA sequence in FASTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
@@ -637,18 +714,35 @@ The encoords module works similarly to engene, but with some critical difference
 ```
 $ encoords -s mouse -c 5:30810000-30890000 -autoname
 
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ encoords: mouse 5:30810000-30890000 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
 Assembly name: GRCm39
+Specified coordinates: 5:30810000-30890000
+Specified sequence length: 80001bp
+
+Genes included in region:
+Slc35f6
+Cenpa
+Dpysl5
+
+Specified coordinates: 5:30810000-30890000
 Specified sequence length: 80001bp
 
 Transcripts included in region:
-Slc35f6-201
-Cenpa-205
-Dpysl5-203
+Slc35f6-201 (+)
+Cenpa-205 (+)
+Dpysl5-203 (+)
 
-Coordinates saved to mouse_5_30810000-30890000.annotation.txt
-DNA sequence saved to mouse_5_30810000-30890000.fasta.txt
+Coordinates saved to mouse_5.30810000-30890000.annotation.txt
+DNA sequence saved to mouse_5.30810000-30890000.fasta.txt
+
+Completed in 2.4 seconds
 ```
-As the coordinates are specified in place of the gene name, the **-sa**, **-ea**, **-goa**, and **-fw** arguments in engene are absent from encoords. Also, as the chromosomes and coordinates are not homologous between species, there is no option to enter multiple species names as in engene.
+As the coordinates are specified in place of the gene name, the **-sa**, **-ea**, **-goa**, and **-fw** arguments in engene are absent from encoords. However, the **-goo** in some ways takes the place of **-goa**, as it prompts you to enter a gene name from the genes found in the specified region that you would like to specify should be in the forward direction. Also, as the chromosomes and coordinates are not homologous between species, there is no option to enter multiple species names as in engene.
 
 
 &nbsp;
@@ -656,7 +750,7 @@ As the coordinates are specified in place of the gene name, the **-sa**, **-ea**
 # gbcoords usage
 ```
 $ gbcoords -h
-usage: genecoords [-h] -a ACCESSION -c GENCOORDINATES [-fasta FASTA_OUTPUT_FILE]
+usage: genecoords [-h] -a ACCESSION -c GENCOORDINATES [-goo] [-fasta FASTA_OUTPUT_FILE]
                               [-anno COORDINATES_OUTPUT_FILE] [-x] [-nocut] [-rev] 
                               [-autoname] [-flank FLANK] [-vis]
 
@@ -669,6 +763,9 @@ options:
                         accession code
   -c GENCOORDINATES, --gencoordinates GENCOORDINATES
                         Genomic coordinates
+  -goo, --gene_oriented_output
+                        Make output files follow specified gene orientation, not assembly 
+                        orientation
   -fasta FASTA_OUTPUT_FILE, --fasta_output_file FASTA_OUTPUT_FILE
                         Output file name for the DNA sequence in VISTA format
   -anno COORDINATES_OUTPUT_FILE, --coordinates_output_file COORDINATES_OUTPUT_FILE
@@ -682,7 +779,7 @@ options:
                         genes, 'ex' to exclude them
   -vis                  Display graphical representation of the sequence in the terminal
 ```
-This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a species name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000).
+This command functions almost identically to encoords, except that it queries the GenBank nucleotide database rather than Ensembl so has aspects of gbcoords (the absence of the **-all** argument, replaced in a sense by **-x**). The other key difference with encoords is that an accession code (e.g. NC_000020 for human chromosome 20 in GRCh38.p14) must be specified with **-a** instead of a species name with **-s**, and the genomic coordinates therefore just require the base region, not the chromosome (e.g. 500000-600000 instead of 20:500000-600000):
 ```
 $ gbcoords -a NC_000020 -c 500000-600000
 ```
@@ -700,7 +797,7 @@ $ gbcoords -a NC_000020 -c 500000-600000
 $ enspecies -h
 usage: enspecies [-h] [-cn COMMON_NAME] [-ln LATIN_NAME] [-tax TAXON]
 
-List species names from Ensembl by common name, latin binomial name, or taxon.
+List species names from the Ensembl genome browser database by common name, latin binomial name, or taxon.
 
 options:
   -h, --help            show this help message and exit
@@ -712,7 +809,7 @@ options:
   -tax TAXON, --taxon TAXON
                         Search for species by taxon name (e.g. Carnivora)
 ```
-This accessory module is intended to be used to quickly retrieve the latin binomial names of species in the Ensembl database, and also to search for species in the database by taxon.
+This accessory module is intended to be used to quickly retrieve the latin binomial names of species in the Ensembl genome browser database, and also to search for species in the database by taxon.
 For example, if you want to search for the latin names of the 'flycatcher' by this common name, use **-cn**:
 ```
 $ enspecies -cn flycatcher
@@ -729,7 +826,7 @@ Collared flycatcher -> ficedula_albicollis
 Fruit fly -----------> drosophila_melanogaster
 large flying fox ----> pteropus_vampyrus
 ```
-If you mispell a name, the module returns the closest matches to the query. For example, if I mispelled whale as while:
+If you mispell a name, the module returns the closest matches to the query. For example, if 'whale' is mispelled as 'while':
 ```
 $ enspecies -cn while
 
@@ -750,7 +847,7 @@ round goby --> neogobius_melanostomus
 silver-eye --> zosterops_lateralis_melanops
 ```
 
-Finally, you can search the Ensembl database for all species contained within a taxon using **-tax**. This can take a few seconds to run, especially for large taxa, and the taxon name must be spelled correctly. For example:
+Finally, you can search the Ensembl genome browser database for all species contained within a taxon using **-tax**. This can take a few seconds to run, especially for large taxa, and the taxon name must be spelled correctly. For example:
 ```
 $ enspecies -tax felidae
 
@@ -812,15 +909,7 @@ Accession: NC_060944
 Location: 37154207:37175639
 Length: 21433
 ```
-This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command, as this would significantly speed up the request compared to using the default (**-r 0**) GRCh38.p14 record. For example, the command 
-```
-$ gbgene -s human -g gdf5 -autoname -r 0
-```
-takes ~68 seconds to complete, while the command:
-```
-$ gbgene -s human -g gdf5 -autoname -r 1
-``` 
-takes only ~8 seconds.
+This shows that there are 3 different genomic records readily available in GenBank that contain the human GDF5 gene. Record 0 and Record 2 are different genomic assemblies, while Record 1 is a smaller RefSeqGene sequence (28kb). The transcript of GDF5 contained in this sequence is one of the shorter isoforms, only 4882bp as opposed to the longer 21403bp isoform in GRCh38.p14 or 21433bp isoform in CHM13v2.0. If you were only interested in the isolated region around the smaller core sequence of GDF5, you may want to use **-r 1** when running the gbgene command. This would also slightly speed up the request compared to using the default (**-r 0**) GRCh38.p14 record which is larger. 
 
 
 
@@ -845,9 +934,9 @@ The first time you try to run gbgene, gbcoords, or gbrecord, you will be prompte
 &nbsp;
 &nbsp;
 ## Notes
-* Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried with engene or encoords is 5Mb. Requests above this limit will fail (Status code: 400 Reason: Bad Request).
-* Requests to GenBank with gbgene, gbcoords, or gbrecord sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords, gbgene, or gbrecord, try running the command once or twice again, and the query should go through.
-* When running either gbcoords or gbgene on a large sequence record (e.g. a whole chromosome), it may take several tens of seconds to run, compared to the almost instant response from encoords and engene. This is because the gb scripts always search through the entire chromosomal record for gene features in the specified range, while the en scripts are able to narrow their search range to this range from the beginning.
+* Per the [Ensembl REST API documentation](https://rest.ensembl.org/documentation/info/overlap_region), the maximum sequence length that can be queried with engene or encoords is 5Mb. Requests above this limit will fail.
+* Requests to GenBank with gbgene, gbcoords, or gbrecord sometimes fail for reasons unknown. If you get an "HTTP Error 400: Bad Request" when running gbcoords or gbrecord, or a failure with no information when running gbgene, try running the command once or twice again, and the query should go through.
+* I have performed most testing of the gb scripts using vertebrates with unambigous gene symbols. They seem to work well with species and genes with curated genomes, but I cannot guarantee it will work with other types of records.
 * In the graphical representation, if two or more gene transcripts have identical start and end coordinates, only one of the transcripts will be visualised.
 
 ## Bugs
