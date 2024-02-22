@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.6.10"
+VERSION = "0.6.13"
 DESCRIPTION = "A python package to quickly get FASTA and pipmaker annotation files from Ensembl or GenBank for use in mVISTA alignment analysis."
 
 with open ("README.md", "r") as f:
@@ -23,6 +23,8 @@ setup(
         "packaging",
         "biopython",
         "configparser",
+        "fuzzywuzzy",
+        "python-Levenshtein",
     ],
     extras_require={
         "dev": ["pytest", "black", "setuptools", "twine"],
@@ -32,13 +34,14 @@ setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    py_modules=['envistacoords', 'envistagene', 'gbvistacoords', 'gbvistagene', 'gbgenerecord', 'emailaddress'],  # Specify your modules here)
+    py_modules=['envistacoords', 'envistagene', 'gbvistacoords', 'gbvistagene', 'enspecies', 'gbgenerecord', 'emailaddress'],  # Specify modules here
     entry_points={
         'console_scripts': [
             'encoords = getvista.envistacoords:main',
             'engene = getvista.envistagene:main',
             'gbcoords = getvista.gbvistacoords:main',
             'gbgene = getvista.gbvistagene:main',
+            'enspecies = getvista.enspecies:main',
             'gbrecord = getvista.gbgenerecord:main',
             'gbemail = getvista.emailaddress:main',
         ]
