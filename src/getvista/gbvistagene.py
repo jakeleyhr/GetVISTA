@@ -849,52 +849,70 @@ def useflanks(collected_features, start_position, end_position, flank, abs_start
             return max(max_locations)
         else:
             return None
-    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
+    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit  
         # Prompt the user for input
-        gene_name_input1 = input("> Enter the first gene name (case sensitive): ")
-        # Check if the transcript name is present in the dictionary
-        if gene_name_input1 in gene_locations:
-            start_coordinate = get_min_location(gene_name_input1)
-            if flank == "in":
-                start_coordinate = get_min_location(gene_name_input1)
-                start_coordinate = start_coordinate+abs_start_coord-startdiff-1
-                print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}\n")
-            if flank == "ex":
-                start_coordinate = get_max_location(gene_name_input1)+1
-                start_coordinate = start_coordinate+abs_start_coord-startdiff-1
-                print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}\n")
-        else:
-            choice = input("Invalid input. Do you want to try again? (y/n): ")
-            if choice.lower() != "y":
-                print("Terminating the script.")
-                sys.exit() # Terminate the script if the user chooses not to try again
-            else:
-                continue # Continue to prompt for input if the user chooses to try again
-        break # Exit the outer loop if a valid gene name is entered
+        gene_name_input1 = input("> Enter the first gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_locations_lower = {gene.lower(): value for gene, value in gene_locations.items()}
+        #print(gene_start_positions_lower)
 
-    
-    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
-        # Prompt the user for input
-        gene_name_input2 = input("> Enter the second gene name (case sensitive): ")
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_locations.keys()}
+
         # Check if the transcript name is present in the dictionary
-        if gene_name_input2 in gene_locations:
-            end_coordinate = get_max_location(gene_name_input2)
+        if gene_name_input1 in gene_locations_lower:
+            original_gene_name1 = gene_name_map[gene_name_input1.lower()]
+            start_coordinate = get_min_location(original_gene_name1)
             if flank == "in":
-                end_coordinate = get_max_location(gene_name_input2)
-                end_coordinate = end_coordinate+abs_start_coord-startdiff-1
-                print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}\n")
+                start_coordinate = get_min_location(original_gene_name1)
+                start_coordinate = start_coordinate+abs_start_coord-startdiff-1
+                print(f"The start coordinate for {original_gene_name1} is: {start_coordinate}\n")
             if flank == "ex":
-                end_coordinate = get_min_location(gene_name_input2)-1
-                end_coordinate = end_coordinate+abs_start_coord-startdiff-1
-                print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}\n")
+                start_coordinate = get_max_location(original_gene_name1)
+                start_coordinate = start_coordinate+abs_start_coord-startdiff
+                print(f"The start coordinate after {original_gene_name1} is: {start_coordinate}\n")
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
                 print("Terminating the script.")
                 sys.exit() # Terminate the script if the user chooses not to try again
             else:
-                continue # Continue to prompt for input if the user chooses to try again
-        break # Exit the outer loop if a valid gene name is entered
+                continue  # Continue to prompt for input if the user chooses to try again
+        break  # Exit the outer loop if a valid gene name is entered
+
+    while True:  # Keep looping until a valid gene name is entered or the user chooses to exit  
+        # Prompt the user for input
+        # Prompt the user for input
+        gene_name_input2 = input("> Enter the second gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_locations_lower = {gene.lower(): value for gene, value in gene_locations.items()}
+        #print(gene_start_positions_lower)
+
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_locations.keys()}
+
+        # Check if the transcript name is present in the dictionary
+        if gene_name_input2 in gene_locations_lower:
+            original_gene_name2 = gene_name_map[gene_name_input2.lower()]
+            end_coordinate = get_max_location(original_gene_name2)
+            if flank == "in":
+                end_coordinate = get_max_location(original_gene_name2)
+                end_coordinate = end_coordinate+abs_start_coord-startdiff-1
+                print(f"The end coordinate for {original_gene_name2} is: {end_coordinate}\n")
+            if flank == "ex":
+                end_coordinate = get_min_location(original_gene_name2)
+                end_coordinate = end_coordinate+abs_start_coord-startdiff-2
+                print(f"The end coordinate before {original_gene_name2} is: {end_coordinate}\n")
+        else:
+            choice = input("Invalid input. Do you want to try again? (y/n): ")
+            if choice.lower() != "y":
+                print("Terminating the script.")
+                sys.exit() # Terminate the script if the user chooses not to try again
+            else:
+                continue  # Continue to prompt for input if the user chooses to try again
+        break  # Exit the outer loop if a valid gene name is entered
 
     new_start = start_coordinate
     new_end = end_coordinate

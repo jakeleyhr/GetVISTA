@@ -15,6 +15,7 @@ import json
 import time
 import argparse
 import requests
+import re
 import time
 from shutil import get_terminal_size
 from Bio import SeqIO
@@ -98,18 +99,49 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
     # Get start and end coordinates from gene lookup
     if response.status_code == 200:
         gene_info = response.json()
-        if 'start' in gene_info and 'end' in gene_info:
-            gene_start_coordinate = gene_info['start']
-            gene_end_coordinate = gene_info['end']
-            gene_ref_name = gene_info['display_name']
-        else:
-            print(f"Coordinates not found for gene: {gene_name}")
     else:
+        try: # If no gene by that name, search for synonyms and then use that as query instead
+            synonym_endpoint = f"http://rest.ensembl.org/xrefs/symbol/{species}/{gene_name}"
+            synonymresponse = requests.get(synonym_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+            synonym_info = synonymresponse.json()
+            gene_id = synonym_info[0]['id']
+            gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{gene_id}"
+            response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+            gene_info = response.json()
+            if response.status_code == 200:
+                gene_info = response.json()
+                old_gene_name = gene_name
+                gene_name = gene_info['display_name']
+                print(f"Query gene name {old_gene_name} changed to {gene_name}\n")
+        except IndexError:
+            try: # If no synonyms exist, see is the user input an Ensembl gene ID number instead
+                gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{gene_name}"
+                response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+                gene_info = response.json()
+                if response.status_code == 200:
+                    gene_info = response.json()
+                    print(f"Searching using Ensembl ID: {gene_name}")
+            except:
+                return
+
+    if response.status_code != 200:
         print(f"ERROR: Failed to retrieve gene information. Status code: {response.status_code}")
         print("Check species and gene name are correct.")
         return
         #sys.exit()
     
+    if 'start' in gene_info and 'end' in gene_info:
+        gene_start_coordinate = gene_info['start']
+        gene_end_coordinate = gene_info['end']
+        try:
+            gene_ref_name = gene_info['display_name']
+        except KeyError:
+            gene_ref_name=gene_name
+            gene_description = gene_info['description']
+            print(f"Gene description: {gene_description}\n")
+            pass
+
+
     # Get strand information:
     strandint = gene_info['strand']
     if strandint == 1:
@@ -165,8 +197,7 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
         #sys.exit()
     
     return genomic_coordinates, fasta_lines, strand, gene_ref_name
-
-
+    
 # Function 2 - get gene feature coordinates in pipmaker format
 def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts):
     client = EnsemblRestClient()
@@ -190,6 +221,7 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
             new_start = 1
 
             for transcript in transcripts:
+                #print(transcript)
                 if all_transcripts:
                     filter_type = 'all'
                 else:
@@ -207,7 +239,19 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                     elif start_position > sequence_length and end_position > sequence_length:
                         print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
                     else:
-                        print(f"{transcript_name} ({strand})")
+                        # If the transcript name is just an ensembl ID number, print the gene description as well (if available)
+                        match = re.match(r'^EN.*\d{5,}$', transcript_name) # match if begins with EN and ends with at least 5 digits
+                        if match:
+                            description = get_gene_description(transcript_name) # Use function 2.5 below to get gene description
+                            if description:
+                                index = description.find(" [")
+                                result = description[:index]
+                                print(f"{transcript_name} ({result}) ({strand})")
+                            else:
+                                print(f"{transcript_name} ({strand})") # If ensembl ID number, but no description available
+                        else:
+                            print(f"{transcript_name} ({strand})") # If not an ensembl ID number
+
 
                     if nocut == False:
                         if not ((start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length)):
@@ -323,6 +367,33 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
 
     return coordinates_content, sequence_length
 
+
+# Function 2.5 - get gene description information from input Ensembl ID
+def get_gene_description(ensembl_gene_id):
+    #print(ensembl_gene_id)
+    gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{ensembl_gene_id}"
+    response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+    gene_info = response.json()
+    if response.status_code == 200:
+        gene_info = response.json()
+        gene_parent = gene_info['Parent']
+        #print(f"Gene parent: {gene_parent}\n")
+        gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{gene_parent}"
+        response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+        gene_info = response.json()
+        if response.status_code == 200:
+            gene_info = response.json()
+            try:
+                gene_description = gene_info['description']
+                return gene_description
+            except KeyError:
+                pass
+    else:
+        # Print an error message if the request was not successful
+        print(f"Failed to fetch gene information for gene ID {ensembl_gene_id}. Status code: {response.status_code}")
+        return None
+    
+
 # Function A - reverse pipmaker coordinates
 def reverse_coordinates(coordinates, sequence_length):
     # Prepare to collect reversed coordianates
@@ -380,8 +451,8 @@ def useflanks(species, genes, genomic_coordinates, flank):
     input_region_start = int(genomic_coordinates.split(":")[1].split("-")[0])
     input_region_end = int(genomic_coordinates.split(":")[1].split("-")[1])
     sequence_length = (input_region_end - input_region_start) + 1
-
     print(f"Specified sequence length: {sequence_length}bp")
+
     print("\nGenes included in region:")
     genes_data = []  # Initialize an empty list to store gene data
     #print(genes)
@@ -426,37 +497,59 @@ def useflanks(species, genes, genomic_coordinates, flank):
             gene_end_positions[gene_name] = start_position-1
     while True:      
         # Prompt the user for input
-        gene_name_input1 = input("\n> Enter the first gene name (case sensitive): ")
-        # Check if the gene name is present in the dictionary
-        if gene_name_input1 in gene_start_positions:
-            start_coordinate = gene_start_positions[gene_name_input1]
+        gene_name_input1 = input("\n> Enter the first gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_start_positions_lower = {gene.lower(): value for gene, value in gene_start_positions.items()}
+        #print(gene_start_positions_lower)
+        
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_start_positions.keys()}
+        
+        # Check if the lowercase gene name input is present in the lowercase dictionary keys
+        if gene_name_input1.lower() in gene_start_positions_lower:
+            # Get the original case-sensitive gene name corresponding to the lowercase gene name input
+            original_gene_name1 = gene_name_map[gene_name_input1.lower()]
+            start_coordinate = gene_start_positions[original_gene_name1]
             if flank == "in":
-                print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}")
+                print(f"The start coordinate for {original_gene_name1} is: {start_coordinate}")
             if flank == "ex":
-                print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}")
+                print(f"The start coordinate before {original_gene_name1} is: {start_coordinate}")
             break
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
                 print("Terminating the script.")
-                sys.exit()  # Terminate the loop if the user chooses not to try again
+                #sys.exit()  # Terminate the loop if the user chooses not to try again
+                return
 
     while True:      
         # Prompt the user for input
-        gene_name_input2 = input("\n> Enter the second gene name (case sensitive): ")
+        gene_name_input2 = input("\n> Enter the second gene name (case insensitive): ")
+
+        # Convert all gene names to lowercase
+        gene_end_positions_lower = {gene.lower(): value for gene, value in gene_end_positions.items()}
+        #print(gene_end_positions_lower)
+
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_start_positions.keys()}
+
         # Check if the gene name is present in the dictionary
-        if gene_name_input2 in gene_end_positions:
-            end_coordinate = gene_end_positions[gene_name_input2]
+        if gene_name_input2.lower() in gene_end_positions_lower:
+            # Get the original case-sensitive gene name corresponding to the lowercase gene name input
+            original_gene_name2 = gene_name_map[gene_name_input2.lower()]
+            end_coordinate = gene_start_positions[original_gene_name2]
             if flank == "in":
-                print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}")
+                print(f"The start coordinate for {original_gene_name2} is: {end_coordinate}")
             if flank == "ex":
-                print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}")
+                print(f"The start coordinate before {original_gene_name2} is: {end_coordinate}")
             break
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
                 print("Terminating the script.")
-                sys.exit()  # Terminate the loop if the user chooses not to try again
+                #sys.exit()  # Terminate the loop if the user chooses not to try again
+                return
 
     new_start = start_coordinate
     new_end = end_coordinate

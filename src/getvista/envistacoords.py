@@ -147,8 +147,19 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
                     elif start_position > sequence_length and end_position > sequence_length:
                         print(f"({transcript_name} transcript out of 3' range:{start_position}:{end_position})")
                     else:
-                        print(f"{transcript_name} ({strand})")
-                        strand = "+" if gene_info['strand'] == 1 else "-"
+                        # If the transcript name is just an ensembl ID number, print the gene description as well (if available)
+                        match = re.match(r'^EN.*\d{5,}$', transcript_name) # match if begins with EN and ends with at least 5 digits
+                        if match:
+                            description = get_gene_description(transcript_name) # Use function 2.5 below to get gene description
+                            if description:
+                                index = description.find(" [")
+                                result = description[:index]
+                                print(f"{transcript_name} ({result}) ({strand})")
+                            else:
+                                print(f"{transcript_name} ({strand})") # If ensembl ID number, but no description available
+                        else:
+                            print(f"{transcript_name} ({strand})") # If not an ensembl ID number
+
                     if nocut == False:
                         if not ((start_position < 0 and end_position < 0) or (start_position > sequence_length and end_position > sequence_length)):
                             if start_position < 0:
@@ -262,6 +273,33 @@ def pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_tr
 
     return coordinates_content, sequence_length
 
+
+# Function 2.5 - get gene description information from input Ensembl ID
+def get_gene_description(ensembl_gene_id):
+    #print(ensembl_gene_id)
+    gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{ensembl_gene_id}"
+    response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+    gene_info = response.json()
+    if response.status_code == 200:
+        gene_info = response.json()
+        gene_parent = gene_info['Parent']
+        #print(f"Gene parent: {gene_parent}\n")
+        gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{gene_parent}"
+        response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
+        gene_info = response.json()
+        if response.status_code == 200:
+            gene_info = response.json()
+            try:
+                gene_description = gene_info['description']
+                return gene_description
+            except KeyError:
+                pass
+    else:
+        # Print an error message if the request was not successful
+        print(f"Failed to fetch gene information for gene ID {ensembl_gene_id}. Status code: {response.status_code}")
+        return None
+    
+
 # Function A - reverse pipmaker coordinates
 def reverse_coordinates(coordinates, sequence_length):
     # Prepare to collect reversed coordianates
@@ -314,6 +352,7 @@ def useflanks(genes, genomic_coordinates, flank):
     if flank not in ["in", "ex"]:
         print("ERROR: invalid flank argument; must be 'in' or 'ex'")
         sys.exit()
+
     print("\nGenes included in region:")
     genes_data = []  # Initialize an empty list to store gene data
     #print(genes)
@@ -358,37 +397,59 @@ def useflanks(genes, genomic_coordinates, flank):
             gene_end_positions[gene_name] = start_position-1
     while True:      
         # Prompt the user for input
-        gene_name_input1 = input("\n> Enter the first gene name (case sensitive): ")
-        # Check if the gene name is present in the dictionary
-        if gene_name_input1 in gene_start_positions:
-            start_coordinate = gene_start_positions[gene_name_input1]
+        gene_name_input1 = input("\n> Enter the first gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_start_positions_lower = {gene.lower(): value for gene, value in gene_start_positions.items()}
+        #print(gene_start_positions_lower)
+        
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_start_positions.keys()}
+        
+        # Check if the lowercase gene name input is present in the lowercase dictionary keys
+        if gene_name_input1.lower() in gene_start_positions_lower:
+            # Get the original case-sensitive gene name corresponding to the lowercase gene name input
+            original_gene_name1 = gene_name_map[gene_name_input1.lower()]
+            start_coordinate = gene_start_positions[original_gene_name1]
             if flank == "in":
-                print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}\n")
+                print(f"The start coordinate for {original_gene_name1} is: {start_coordinate}")
             if flank == "ex":
-                print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}\n")
+                print(f"The start coordinate before {original_gene_name1} is: {start_coordinate}")
             break
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
                 print("Terminating the script.")
-                break  # Terminate the loop if the user chooses not to try again
+                #sys.exit()  # Terminate the loop if the user chooses not to try again
+                break
 
     while True:      
         # Prompt the user for input
-        gene_name_input2 = input("> Enter the second gene name (case sensitive): ")
+        gene_name_input2 = input("\n> Enter the second gene name (case insensitive): ")
+
+        # Convert all gene names to lowercase
+        gene_end_positions_lower = {gene.lower(): value for gene, value in gene_end_positions.items()}
+        #print(gene_end_positions_lower)
+
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_start_positions.keys()}
+
         # Check if the gene name is present in the dictionary
-        if gene_name_input2 in gene_end_positions:
-            end_coordinate = gene_end_positions[gene_name_input2]
+        if gene_name_input2.lower() in gene_end_positions_lower:
+            # Get the original case-sensitive gene name corresponding to the lowercase gene name input
+            original_gene_name2 = gene_name_map[gene_name_input2.lower()]
+            end_coordinate = gene_start_positions[original_gene_name2]
             if flank == "in":
-                print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}")
+                print(f"The start coordinate for {original_gene_name2} is: {end_coordinate}")
             if flank == "ex":
-                print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}")
+                print(f"The start coordinate before {original_gene_name2} is: {end_coordinate}")
             break
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
                 print("Terminating the script.")
-                break  # Terminate the loop if the user chooses not to try again
+                #sys.exit()  # Terminate the loop if the user chooses not to try again
+                break
 
     coordssplit = re.match(r"([^\.]+)?\.?(\d+):(\d+)-(\d+)", genomic_coordinates)
     if coordssplit:
@@ -536,25 +597,28 @@ def encoords(
     if gene_oriented_output:
         while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
             # Prompt the user for input
-            gene_for_orientation = input("\n> Enter the gene name for forward orientation (case sensitive): ")
+            gene_for_orientation_input = input("\n> Enter the gene name for forward orientation (case insensitive): ").lower()
+
+            # Check if the gene name is present in the data
+            gene_for_orientation = None
             for entry in genes:
-                if entry.get('external_name') == gene_for_orientation:  # Check if the 'external_name' matches the desired gene name
+                if entry.get('external_name').lower() == gene_for_orientation_input:  # Check if the 'external_name' matches the desired gene name
+                    gene_for_orientation = entry.get('external_name')  # Get the original case-sensitive gene name
                     strand = entry.get('strand')  # Return the 'strand' value if the gene is found
-                    break # Exit loop if a match is found
+                    break  # Exit loop if a match is found
             else:
                 choice = input("Invalid input. Do you want to try again? (y/n): ")
                 if choice.lower() != "y":
                     print("Terminating the script.")
-                    sys.exit() # Terminate the script if the user chooses not to try again
+                    sys.exit()  # Terminate the script if the user chooses not to try again
                 else:
-                    continue # Continue to prompt for input if the user chooses to try again
-            break # Exit the outer loop if a valid gene name is entered
-        if strand == '-1':
-            print(f'{gene_for_orientation} is on the reverse strand')
-            apply_reverse_complement = True
-        else:
-
-            print(f'{gene_for_orientation} is on the forward strand')
+                    continue  # Continue to prompt for input if the user chooses to try again
+            break  # Exit the outer loop if a valid gene name is entered
+    if strand == -1:
+        print(f'{gene_for_orientation} is on the reverse strand')
+        apply_reverse_complement = True
+    elif strand == 1:
+        print(f'{gene_for_orientation} is on the forward strand')
 
     # Get coordinates and sequence length
     coordinates_content, sequence_length = pipmaker(genes, genomic_coordinates, apply_reverse_complement, nocut, all_transcripts)

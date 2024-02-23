@@ -710,18 +710,27 @@ def useflanks(collected_features, start_position, end_position, flank, abs_start
             return None
     while True:  # Keep looping until a valid gene name is entered or the user chooses to exit  
         # Prompt the user for input
-        gene_name_input1 = input("> Enter the first gene name (case sensitive): ")
+        gene_name_input1 = input("> Enter the first gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_locations_lower = {gene.lower(): value for gene, value in gene_locations.items()}
+        #print(gene_start_positions_lower)
+
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_locations.keys()}
+
         # Check if the transcript name is present in the dictionary
-        if gene_name_input1 in gene_locations:
-            start_coordinate = get_min_location(gene_name_input1)
+        if gene_name_input1 in gene_locations_lower:
+            original_gene_name1 = gene_name_map[gene_name_input1.lower()]
+            start_coordinate = get_min_location(original_gene_name1)
             if flank == "in":
-                start_coordinate = get_min_location(gene_name_input1)
+                start_coordinate = get_min_location(original_gene_name1)
                 start_coordinate = start_coordinate+abs_start_coord-startdiff-1
-                print(f"The start coordinate for {gene_name_input1} is: {start_coordinate}\n")
+                print(f"The start coordinate for {original_gene_name1} is: {start_coordinate}\n")
             if flank == "ex":
-                start_coordinate = get_max_location(gene_name_input1)+1
+                start_coordinate = get_max_location(original_gene_name1)
                 start_coordinate = start_coordinate+abs_start_coord-startdiff
-                print(f"The start coordinate after {gene_name_input1} is: {start_coordinate}\n")
+                print(f"The start coordinate after {original_gene_name1} is: {start_coordinate}\n")
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
@@ -733,18 +742,28 @@ def useflanks(collected_features, start_position, end_position, flank, abs_start
 
     while True:  # Keep looping until a valid gene name is entered or the user chooses to exit  
         # Prompt the user for input
-        gene_name_input2 = input("> Enter the second gene name (case sensitive): ")
+        # Prompt the user for input
+        gene_name_input2 = input("> Enter the second gene name (case insensitive): ")
+        
+        # Convert all gene names to lowercase
+        gene_locations_lower = {gene.lower(): value for gene, value in gene_locations.items()}
+        #print(gene_start_positions_lower)
+
+        # Create a reverse dictionary mapping lowercase gene names to their original case-sensitive versions
+        gene_name_map = {v.lower(): v for v in gene_locations.keys()}
+
         # Check if the transcript name is present in the dictionary
-        if gene_name_input2 in gene_locations:
-            end_coordinate = get_max_location(gene_name_input2)
+        if gene_name_input2 in gene_locations_lower:
+            original_gene_name2 = gene_name_map[gene_name_input2.lower()]
+            end_coordinate = get_max_location(original_gene_name2)
             if flank == "in":
-                end_coordinate = get_max_location(gene_name_input2)
+                end_coordinate = get_max_location(original_gene_name2)
                 end_coordinate = end_coordinate+abs_start_coord-startdiff-1
-                print(f"The end coordinate for {gene_name_input2} is: {end_coordinate}\n")
+                print(f"The end coordinate for {original_gene_name2} is: {end_coordinate}\n")
             if flank == "ex":
-                end_coordinate = get_min_location(gene_name_input2)-1
-                end_coordinate = end_coordinate+abs_start_coord-startdiff
-                print(f"The end coordinate before {gene_name_input2} is: {end_coordinate}\n")
+                end_coordinate = get_min_location(original_gene_name2)
+                end_coordinate = end_coordinate+abs_start_coord-startdiff-2
+                print(f"The end coordinate before {original_gene_name2} is: {end_coordinate}\n")
         else:
             choice = input("Invalid input. Do you want to try again? (y/n): ")
             if choice.lower() != "y":
@@ -884,12 +903,15 @@ def gbcoords(
     if gene_oriented_output:
         while True:  # Keep looping until a valid gene name is entered or the user chooses to exit
             # Prompt the user for input
-            gene_for_orientation = input("\n> Enter the gene name for forward orientation (case sensitive): ")
+            gene_for_orientation_input = input("\n> Enter the gene name for forward orientation (case insensitive): ").lower()
+            
+            # Check if the gene name is present in the data
+            gene_for_orientation = None
             for entry in collected_features:
                 # Check if the "gene" value matches the desired gene_value
-                if entry.get("gene") == gene_for_orientation:
-                    # Extract the "strand" value associated with the matching gene_value
-                    desired_strand = entry.get("strand")
+                if entry.get("gene").lower() == gene_for_orientation_input:
+                    gene_for_orientation = entry.get('gene')  # Get the original case-sensitive gene name
+                    strand = entry.get('strand')  # Return the 'strand' value if the gene is found
                     break  # Exit loop if a match is found
             else:
                 choice = input("Invalid input. Do you want to try again? (y/n): ")
@@ -899,10 +921,10 @@ def gbcoords(
                 else:
                     continue # Continue to prompt for input if the user chooses to try again
             break # Exit the outer loop if a valid gene name is entered
-        if desired_strand == '-':
+        if strand == '-':
             print(f'{gene_for_orientation} is on the reverse strand')
             apply_reverse_complement = True
-        else:
+        elif strand == '+':
             print(f'{gene_for_orientation} is on the forward strand')
 
     # Get 2 reformatted lists of genes and features: 1 for ncRNAs, and 1 for paired mRNA/CDS features
