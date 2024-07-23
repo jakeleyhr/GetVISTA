@@ -136,10 +136,10 @@ def download_dna_sequence(species, gene_name, start_adjust, end_adjust, gene_ori
         try:
             gene_ref_name = gene_info['display_name']
         except KeyError:
-            gene_ref_name=gene_name
-            gene_description = gene_info['description']
-            print(f"Gene description: {gene_description}\n")
-            pass
+            gene_ref_name = gene_name
+        
+        gene_description = gene_info.get('description', 'No description available')
+        print(f"Gene description: {gene_description}\n")
 
 
     # Get strand information:
@@ -374,6 +374,7 @@ def get_gene_description(ensembl_gene_id):
     gene_info_endpoint = f"http://rest.ensembl.org/lookup/id/{ensembl_gene_id}"
     response = requests.get(gene_info_endpoint, headers={"Content-Type": "application/json"}, timeout=60)
     gene_info = response.json()
+    #print(response.status_code)
     if response.status_code == 200:
         gene_info = response.json()
         gene_parent = gene_info['Parent']
@@ -862,7 +863,8 @@ def main():
                 args.flank,
                 args.vis,
             )
-        except Exception:
+        except Exception as e:
+            #print(f"An error occurred: {e}")
             failed_species.append(species)
     
     end_time = time.time()
